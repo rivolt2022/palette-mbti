@@ -20,7 +20,10 @@ def hex_to_rgb_normalized(hex_color):
 
 def load_training_data():
     """학습 데이터 로드 및 전처리"""
-    data_dir = "../public/data/training-data"
+    # 현재 스크립트의 디렉토리를 기준으로 상대 경로 계산
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(script_dir, "..", "public", "data", "training-data")
+    data_dir = os.path.normpath(data_dir)  # 경로 정규화
     
     # 각 MBTI 지표별 데이터 로드
     datasets = {}
@@ -194,7 +197,9 @@ def train_models(models_data):
 def save_models_as_tfjs(trained_models):
     """모델을 TensorFlow.js 형식으로 저장 (브라우저 최적화)"""
     # 모델 저장 디렉토리 생성
-    models_dir = "../public/models"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    models_dir = os.path.join(script_dir, "..", "public", "models")
+    models_dir = os.path.normpath(models_dir)  # 경로 정규화
     os.makedirs(models_dir, exist_ok=True)
     
     for indicator, model_data in trained_models.items():
