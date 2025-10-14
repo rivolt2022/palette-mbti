@@ -10,84 +10,93 @@ import type {
 } from '@/types/MBTIData';
 
 /**
- * 색채 심리학 기반 MBTI 색상 규칙 정의
+ * 이미지 기반 MBTI 색상 규칙 정의
+ * 각 지표별로 해당하는 MBTI 타입들의 색상 범위를 분석하여 설정
  */
 const MBTI_COLOR_RULES: MBTIColorRules = {
-  // E (외향): 채도 높음, 밝기 중상, 따뜻한 색조
+  // E (외향): ESFP, ESTP, ENFP, ENTP, ENFJ, ENTJ
+  // 색상: Diva Pink(320,85,70), Flame Scarlet(15,90,60), Lemon Chrome(55,90,60), Goji Berry(350,75,45), Bluebird(210,80,55), Night Sky(0,0,15)
   E: {
-    hueRange: [0, 60], // 빨강-노랑 범위
-    saturationRange: [70, 100],
+    hueRange: [0, 60], // 빨강-노랑 범위 (핑크, 빨강, 노랑)
+    saturationRange: [70, 90],
+    lightnessRange: [60, 80],
+    warmTone: true,
+    includeNeutral: false,
+    complementary: false,
+  },
+  // I (내향): ISFJ, ISFP, INFP, INFJ, INTP, INTJ, ISTP, ISTJ
+  // 색상: Daffodil(45,85,75), Sharp Green(120,80,50), Cockatoo(180,70,65), Crystal Seas(200,60,75), Forget-Me-Not(240,50,70), Antarctica(0,0,85), Blueprint(220,85,35), Asphalt(0,0,40)
+  I: {
+    hueRange: [45, 240], // 노랑-보라 범위 (노랑, 초록, 청록, 파랑, 보라, 회색)
+    saturationRange: [40, 85],
+    lightnessRange: [35, 85],
+    warmTone: false,
+    includeNeutral: true,
+    complementary: false,
+  },
+  // S (감각): ISFJ, ISFP, ESTP, ESFJ, ISFP, ESTJ, ISTP, ISTJ
+  // 색상: Daffodil(45,85,75), Sharp Green(120,80,50), Flame Scarlet(15,90,60), Fandango Pink(310,70,65), Sharp Green(120,80,50), Winter Green(150,60,40), Blueprint(220,85,35), Asphalt(0,0,40)
+  S: {
+    hueRange: [15, 220], // 빨강-파랑 범위 (빨강, 핑크, 노랑, 초록, 파랑, 회색)
+    saturationRange: [50, 90],
+    lightnessRange: [40, 75],
+    warmTone: false,
+    includeNeutral: true,
+    complementary: false,
+  },
+  // N (직관): INFP, ENFP, ENTP, INFP, ENFJ, INFJ, INTP, INTJ, ENTJ
+  // 색상: Cockatoo(180,70,65), Lemon Chrome(55,90,60), Goji Berry(350,75,45), Cockatoo(180,70,65), Bluebird(210,80,55), Crystal Seas(200,60,75), Forget-Me-Not(240,50,70), Antarctica(0,0,85), Night Sky(0,0,15)
+  N: {
+    hueRange: [0, 360], // 전체 색조 범위
+    saturationRange: [50, 90],
+    lightnessRange: [15, 85],
+    warmTone: false,
+    includeNeutral: true,
+    complementary: true,
+  },
+  // T (사고): ESTP, ESTJ, ENTP, INTP, INTJ, ISTP, ENTJ, ISTJ
+  // 색상: Flame Scarlet(15,90,60), Winter Green(150,60,40), Goji Berry(350,75,45), Forget-Me-Not(240,50,70), Antarctica(0,0,85), Blueprint(220,85,35), Night Sky(0,0,15), Asphalt(0,0,40)
+  T: {
+    hueRange: [15, 240], // 빨강-보라 범위 (빨강, 초록, 보라, 파랑, 회색)
+    saturationRange: [30, 90],
+    lightnessRange: [15, 85],
+    warmTone: false,
+    includeNeutral: true,
+    complementary: false,
+  },
+  // F (감정): ISFJ, ESFP, ESFJ, ISFP, ENFP, INFP, ENFJ, INFJ
+  // 색상: Daffodil(45,85,75), Diva Pink(320,85,70), Fandango Pink(310,70,65), Sharp Green(120,80,50), Lemon Chrome(55,90,60), Cockatoo(180,70,65), Bluebird(210,80,55), Crystal Seas(200,60,75)
+  F: {
+    hueRange: [45, 320], // 노랑-핑크 범위 (노랑, 핑크, 초록, 청록, 파랑)
+    saturationRange: [60, 90],
     lightnessRange: [50, 80],
     warmTone: true,
     includeNeutral: false,
     complementary: false,
   },
-  // I (내향): 채도 낮음, 밝기 중하, 차가운 색조
-  I: {
-    hueRange: [180, 270], // 파랑-보라 범위
-    saturationRange: [20, 50],
-    lightnessRange: [30, 60],
-    warmTone: false,
-    includeNeutral: true,
-    complementary: false,
-  },
-  // S (감각): 자연색, 중립색, 채도 중간
-  S: {
-    hueRange: [60, 180], // 노랑-파랑 범위 (자연색)
-    saturationRange: [40, 70],
-    lightnessRange: [40, 70],
-    warmTone: false,
-    includeNeutral: true,
-    complementary: false,
-  },
-  // N (직관): 비현실적 색상 조합, 채도 높음
-  N: {
-    hueRange: [0, 360], // 전체 색조 범위
-    saturationRange: [60, 100],
-    lightnessRange: [30, 80],
-    warmTone: false,
-    includeNeutral: false,
-    complementary: true,
-  },
-  // T (사고): 무채색 포함, 쿨톤, 채도 낮음
-  T: {
-    hueRange: [180, 300], // 파랑-보라 범위
-    saturationRange: [30, 60],
-    lightnessRange: [30, 70],
-    warmTone: false,
-    includeNeutral: true,
-    complementary: false,
-  },
-  // F (감정): 파스텔톤, 웜톤, 채도 중상
-  F: {
-    hueRange: [300, 60], // 보라-빨강 범위 (웜톤)
-    saturationRange: [50, 90],
-    lightnessRange: [60, 90],
-    warmTone: true,
-    includeNeutral: false,
-    complementary: false,
-  },
-  // J (판단): 체계적이고 정렬된 색상, 유사색상 계열, 보색 관계
+  // J (판단): ISFJ, ESFJ, ESTJ, ENFJ, INFJ, INTJ, ENTJ, ISTJ
+  // 색상: Daffodil(45,85,75), Fandango Pink(310,70,65), Winter Green(150,60,40), Bluebird(210,80,55), Crystal Seas(200,60,75), Antarctica(0,0,85), Night Sky(0,0,15), Asphalt(0,0,40)
   J: {
     hueRange: [0, 360], // 전체 색조 범위
-    saturationRange: [50, 85], // 높은 채도로 명확한 색상
-    lightnessRange: [45, 75], // 일정한 밝기 범위
+    saturationRange: [40, 85],
+    lightnessRange: [15, 85],
     warmTone: false,
-    includeNeutral: false,
-    complementary: true, // 보색 관계 강조
-    colorScheme: 'analogous', // 유사색상 계열 선호
-    orderliness: 'high', // 체계적인 색상 배치
+    includeNeutral: true,
+    complementary: true,
+    colorScheme: 'analogous',
+    orderliness: 'high',
   },
-  // P (인식): 자유롭고 다양한 색상 조합, 대비가 큰 색상들
+  // P (인식): ESFP, ESTP, ISFP, ENFP, ENTP, INFP, INTP, ISTP
+  // 색상: Diva Pink(320,85,70), Flame Scarlet(15,90,60), Sharp Green(120,80,50), Lemon Chrome(55,90,60), Goji Berry(350,75,45), Cockatoo(180,70,65), Forget-Me-Not(240,50,70), Blueprint(220,85,35)
   P: {
     hueRange: [0, 360], // 전체 색조 범위
-    saturationRange: [20, 95], // 매우 다양한 채도
-    lightnessRange: [15, 85], // 매우 다양한 밝기
+    saturationRange: [50, 90],
+    lightnessRange: [35, 70],
     warmTone: false,
-    includeNeutral: true, // 중성색 포함
-    complementary: false, // 비보색 관계
-    colorScheme: 'random', // 무작위 색상 조합
-    orderliness: 'low', // 자유로운 색상 배치
+    includeNeutral: false,
+    complementary: false,
+    colorScheme: 'random',
+    orderliness: 'low',
   },
 };
 
@@ -180,28 +189,17 @@ function getComplementaryHue(hue: number): number {
 function generateAnalogousColors(baseHue: number, count: number): number[] {
   const hues: number[] = [];
   const step = 30; // 30도씩 차이
-  
+
   for (let i = 0; i < count; i += 1) {
     const offset = (i - Math.floor(count / 2)) * step;
     hues.push((baseHue + offset + 360) % 360);
   }
-  
+
   return hues;
 }
 
 /**
- * 삼원색 생성 (J 타입용)
- */
-function generateTriadicColors(baseHue: number): number[] {
-  return [
-    baseHue,
-    (baseHue + 120) % 360,
-    (baseHue + 240) % 360,
-  ];
-}
-
-/**
- * 특정 MBTI 지표에 대한 색상 팔레트 생성
+ * 특정 MBTI 지표에 대한 색상 팔레트 생성 (기존 로직 유지)
  */
 function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
   const rules = MBTI_COLOR_RULES[indicator];
@@ -211,13 +209,19 @@ function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
   if (indicator === 'J') {
     // J: 체계적이고 정렬된 색상
     const baseHue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
-    
+
     if (rules.colorScheme === 'analogous') {
       // 유사색상 계열
       const hues = generateAnalogousColors(baseHue, 5);
       hues.forEach((hue) => {
-        const saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
-        const lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+        const saturation = randomInRange(
+          rules.saturationRange[0],
+          rules.saturationRange[1]
+        );
+        const lightness = randomInRange(
+          rules.lightnessRange[0],
+          rules.lightnessRange[1]
+        );
         palette.push(hslToHex(hue, saturation, lightness));
       });
     } else if (rules.complementary) {
@@ -225,22 +229,33 @@ function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
       const hues = [baseHue, getComplementaryHue(baseHue)];
       for (let i = 0; i < 5; i += 1) {
         const hue = hues[i % 2];
-        const saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
-        const lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+        const saturation = randomInRange(
+          rules.saturationRange[0],
+          rules.saturationRange[1]
+        );
+        const lightness = randomInRange(
+          rules.lightnessRange[0],
+          rules.lightnessRange[1]
+        );
         palette.push(hslToHex(hue, saturation, lightness));
       }
     }
   } else if (indicator === 'P') {
     // P: 자유롭고 다양한 색상 조합
     for (let i = 0; i < 5; i += 1) {
-      let hue: number;
       let saturation: number;
       let lightness: number;
 
       // 매우 다양한 색상 조합
-      hue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
-      saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
-      lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+      const hue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
+      saturation = randomInRange(
+        rules.saturationRange[0],
+        rules.saturationRange[1]
+      );
+      lightness = randomInRange(
+        rules.lightnessRange[0],
+        rules.lightnessRange[1]
+      );
 
       // 중성색 포함 옵션 (P는 더 자주)
       if (rules.includeNeutral && Math.random() < 0.4) {
@@ -249,15 +264,17 @@ function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
 
       // 대비가 큰 색상들 (밝기 차이)
       if (i > 0 && Math.random() < 0.6) {
-        const prevLightness = Number.parseInt(
-          palette[palette.length - 1]?.slice(5, 7) ?? '80',
-          16
-        ) / 255 * 100;
-        
+        const prevLightness =
+          (Number.parseInt(
+            palette[palette.length - 1]?.slice(5, 7) ?? '80',
+            16
+          ) /
+            255) *
+          100;
+
         // 이전 색상과 대비되는 밝기
-        lightness = prevLightness > 50 
-          ? randomInRange(15, 45) 
-          : randomInRange(55, 85);
+        lightness =
+          prevLightness > 50 ? randomInRange(15, 45) : randomInRange(55, 85);
       }
 
       palette.push(hslToHex(hue, saturation, lightness));

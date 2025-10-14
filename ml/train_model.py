@@ -37,20 +37,9 @@ def augment_color_palette(palette_rgb, noise_factor=0.05, indicator=None):
     # palette_rgb는 이미 평탄화된 15차원 벡터 (5개 색상 × 3개 RGB 값)
     palette_array = np.array(palette_rgb)
     
-    # J-P 모델에 대해서는 더 강한 증강 적용
-    if indicator == 'j-p':
-        noise_factor = 0.08  # 더 큰 노이즈
-        
     # 노이즈 추가
     noise = np.random.normal(0, noise_factor, len(palette_array))
-    augmented = np.clip(palette_array + noise, 0, 1)
-    
-    # J-P 모델의 경우 색상 순서도 섞어서 증강
-    if indicator == 'j-p' and np.random.random() < 0.3:
-        # 30% 확률로 색상 순서 섞기 (P 특성 반영)
-        colors = augmented.reshape(5, 3)
-        np.random.shuffle(colors)
-        augmented = colors.flatten()
+    augmented = np.clip(palette_array + noise, 0, 1)  # 0~1 범위로 유지
     
     return augmented.tolist()
 
@@ -74,8 +63,8 @@ def prepare_data_for_training(datasets, use_augmentation=True):
             
             # 데이터 증강 (모든 모델에 적용)
             if use_augmentation:
-                # J-P 모델은 더 많은 증강 적용
-                augmentation_count = 5 if indicator == 'j-p' else 3
+                # 모든 모델에 5배 증강 적용
+                augmentation_count = 5
                 for _ in range(augmentation_count):
                     augmented_palette = augment_color_palette(palette_rgb, indicator=indicator)
                     X.append(augmented_palette)
@@ -118,41 +107,21 @@ def create_simple_model(input_dim, num_classes):
 
 def create_improved_model(input_dim, num_classes, indicator):
     """개선된 신경망 모델 생성 (성능 최적화)"""
-    # J-P 모델은 더 복잡한 구조 사용
-    if indicator == 'j-p':
-        model = keras.Sequential([
-            keras.layers.Dense(128, activation='relu', input_shape=(input_dim,)),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.4),
-            keras.layers.Dense(64, activation='relu'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.4),
-            keras.layers.Dense(32, activation='relu'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.3),
-            keras.layers.Dense(16, activation='relu'),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(num_classes, activation='softmax')
-        ])
-    else:
-        # 다른 모델들도 약간 개선
-        model = keras.Sequential([
-            keras.layers.Dense(64, activation='relu', input_shape=(input_dim,)),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.3),
-            keras.layers.Dense(32, activation='relu'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.3),
-            keras.layers.Dense(16, activation='relu'),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(num_classes, activation='softmax')
-        ])
+    # 모든 모델에 동일한 구조 사용
+    model = keras.Sequential([
+        keras.layers.Dense(64, activation='relu', input_shape=(input_dim,)),
+        keras.layers.BatchNormalization(),
+        keras.layers.Dropout(0.3),
+        keras.layers.Dense(32, activation='relu'),
+        keras.layers.BatchNormalization(),
+        keras.layers.Dropout(0.3),
+        keras.layers.Dense(16, activation='relu'),
+        keras.layers.Dropout(0.2),
+        keras.layers.Dense(num_classes, activation='softmax')
+    ])
     
-    # 옵티마이저 설정 (지표별로 다른 학습률)
-    if indicator == 'j-p':
-        optimizer = keras.optimizers.Adam(learning_rate=0.002)  # J-P는 더 높은 학습률
-    else:
-        optimizer = keras.optimizers.Adam(learning_rate=0.001)
+    # 모든 모델에 동일한 옵티마이저 설정
+    optimizer = keras.optimizers.Adam(learning_rate=0.001)
     
     model.compile(
         optimizer=optimizer,
@@ -181,21 +150,19 @@ def train_models(models_data):
         print(f"클래스 수: {num_classes}")
         print(f"클래스: {data['classes']}")
         
-        # Early stopping 콜백 (J-P 모델은 더 많은 patience)
-        patience = 15 if indicator == 'j-p' else 10
+        # Early stopping 콜백
         early_stopping = keras.callbacks.EarlyStopping(
             monitor='val_accuracy',
-            patience=patience,
+            patience=10,
             restore_best_weights=True,
             verbose=1
         )
         
-        # 학습률 감소 콜백 (J-P 모델은 더 빠른 감소)
-        factor = 0.3 if indicator == 'j-p' else 0.5
+        # 학습률 감소 콜백
         reduce_lr = keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
-            factor=factor,
-            patience=3 if indicator == 'j-p' else 5,
+            factor=0.5,
+            patience=5,
             min_lr=1e-7,
             verbose=1
         )

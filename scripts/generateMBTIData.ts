@@ -10,7 +10,7 @@ import {
   generateMBTIDataset,
 } from '../src/utils/MBTIColorGenerator';
 
-const SAMPLES_PER_INDICATOR = 1000;
+const SAMPLES_PER_INDICATOR = 10000;
 const OUTPUT_DIR = join(process.cwd(), 'public', 'data', 'training-data');
 
 async function main() {

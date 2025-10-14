@@ -4,7 +4,7 @@ import { GetStaticProps } from 'next';
 
 import { MBTIPredictor } from '@/utils/MBTIPredictor';
 
-import { BlogGallery, IBlogGalleryProps } from '../blog/BlogGallery';
+import { IBlogGalleryProps } from '../blog/BlogGallery';
 import { Meta } from '../layout/Meta';
 import { IPaginationProps } from '../pagination/Pagination';
 import { Main } from '../templates/Main';
@@ -41,9 +41,9 @@ const ColorMLTest = () => {
       try {
         await newPredictor.loadModels();
         setPredictor(newPredictor);
-        console.log('✅ ML 모델 로드 완료');
+        // ML 모델 로드 완료
       } catch (error) {
-        console.error('❌ ML 모델 로드 실패:', error);
+        // ML 모델 로드 실패
       }
     };
     initPredictor();
@@ -61,7 +61,7 @@ const ColorMLTest = () => {
         [index]: result,
       }));
     } catch (error) {
-      console.error('ML 예측 실패:', error);
+      // ML 예측 실패
     } finally {
       setIsLoading(false);
     }
@@ -210,7 +210,7 @@ const ColorMLTest = () => {
   );
 };
 
-const Index = (props: IBlogGalleryProps) => (
+const Index = () => (
   <Main
     meta={
       <Meta
@@ -220,9 +220,6 @@ const Index = (props: IBlogGalleryProps) => (
     }
   >
     <ColorMLTest />
-    <div className="mt-8">
-      <BlogGallery posts={props.posts} pagination={props.pagination} />
-    </div>
   </Main>
 );
 
