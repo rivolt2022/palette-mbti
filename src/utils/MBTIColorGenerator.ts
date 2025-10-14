@@ -2,7 +2,12 @@
  * MBTI 색채 심리학 기반 자동 데이터 생성 유틸리티
  */
 
-import type { ColorRGB, MBTIColorRules, MBTIData, MBTIIndicator } from '@/types/MBTIData';
+import type {
+  ColorRGB,
+  MBTIColorRules,
+  MBTIData,
+  MBTIIndicator,
+} from '@/types/MBTIData';
 
 /**
  * 색채 심리학 기반 MBTI 색상 규칙 정의
@@ -86,39 +91,39 @@ const MBTI_COLOR_RULES: MBTIColorRules = {
  * HSL을 RGB로 변환
  */
 function hslToRgb(h: number, s: number, l: number): ColorRGB {
-  h = h / 360;
-  s = s / 100;
-  l = l / 100;
+  const normalizedH = h / 360;
+  const normalizedS = s / 100;
+  const normalizedL = l / 100;
 
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
-  const m = l - c / 2;
+  const c = (1 - Math.abs(2 * normalizedL - 1)) * normalizedS;
+  const x = c * (1 - Math.abs(((normalizedH * 6) % 2) - 1));
+  const m = normalizedL - c / 2;
 
   let r = 0;
   let g = 0;
   let b = 0;
 
-  if (h >= 0 && h < 1 / 6) {
+  if (normalizedH >= 0 && normalizedH < 1 / 6) {
     r = c;
     g = x;
     b = 0;
-  } else if (1 / 6 <= h && h < 2 / 6) {
+  } else if (1 / 6 <= normalizedH && normalizedH < 2 / 6) {
     r = x;
     g = c;
     b = 0;
-  } else if (2 / 6 <= h && h < 3 / 6) {
+  } else if (2 / 6 <= normalizedH && normalizedH < 3 / 6) {
     r = 0;
     g = c;
     b = x;
-  } else if (3 / 6 <= h && h < 4 / 6) {
+  } else if (3 / 6 <= normalizedH && normalizedH < 4 / 6) {
     r = 0;
     g = x;
     b = c;
-  } else if (4 / 6 <= h && h < 5 / 6) {
+  } else if (4 / 6 <= normalizedH && normalizedH < 5 / 6) {
     r = x;
     g = 0;
     b = c;
-  } else if (5 / 6 <= h && h < 1) {
+  } else if (5 / 6 <= normalizedH && normalizedH < 1) {
     r = c;
     g = 0;
     b = x;
@@ -135,7 +140,12 @@ function hslToRgb(h: number, s: number, l: number): ColorRGB {
  * RGB를 HEX로 변환
  */
 function rgbToHex(r: number, g: number, b: number): string {
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+  // eslint-disable-next-line no-bitwise
+  const hex = ((1 << 24) + (r << 16) + (g << 8) + b)
+    .toString(16)
+    .slice(1)
+    .toUpperCase();
+  return `#${hex}`;
 }
 
 /**
@@ -168,22 +178,34 @@ function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
   const palette: string[] = [];
 
   // 5개 색상 생성
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 5; i += 1) {
     let hue: number;
     let saturation: number;
 
     if (rules.complementary && i > 0 && Math.random() < 0.3) {
       // 30% 확률로 보색 관계 활용
-      const baseHue = palette.length > 0
-        ? Number.parseInt(palette[palette.length - 1]?.slice(1, 3) ?? '0', 16) * 360 / 255
-        : randomInRange(rules.hueRange[0], rules.hueRange[1]);
+      const baseHue =
+        palette.length > 0
+          ? (Number.parseInt(
+              palette[palette.length - 1]?.slice(1, 3) ?? '0',
+              16
+            ) *
+              360) /
+            255
+          : randomInRange(rules.hueRange[0], rules.hueRange[1]);
       hue = getComplementaryHue(baseHue);
     } else {
       hue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
     }
 
-    saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
-    const lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+    saturation = randomInRange(
+      rules.saturationRange[0],
+      rules.saturationRange[1]
+    );
+    const lightness = randomInRange(
+      rules.lightnessRange[0],
+      rules.lightnessRange[1]
+    );
 
     // 무채색 포함 옵션
     if (rules.includeNeutral && Math.random() < 0.2) {
@@ -199,7 +221,9 @@ function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
 /**
  * MBTI 데이터셋 생성
  */
-export function generateMBTIDataset(samplesPerIndicator: number = 1000): Record<MBTIIndicator, MBTIData[]> {
+export function generateMBTIDataset(
+  samplesPerIndicator: number = 1000
+): Record<MBTIIndicator, MBTIData[]> {
   const dataset: Record<MBTIIndicator, MBTIData[]> = {
     E: [],
     I: [],
@@ -214,7 +238,7 @@ export function generateMBTIDataset(samplesPerIndicator: number = 1000): Record<
   const indicators: MBTIIndicator[] = ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'];
 
   indicators.forEach((indicator) => {
-    for (let i = 0; i < samplesPerIndicator; i++) {
+    for (let i = 0; i < samplesPerIndicator; i += 1) {
       const palette = generateColorPaletteForMBTI(indicator);
       dataset[indicator].push({
         label: indicator,
@@ -231,11 +255,11 @@ export function generateMBTIDataset(samplesPerIndicator: number = 1000): Record<
  */
 export function generateMBTIDataForIndicator(
   indicator: MBTIIndicator,
-  samples: number = 1000,
+  samples: number = 1000
 ): MBTIData[] {
   const data: MBTIData[] = [];
 
-  for (let i = 0; i < samples; i++) {
+  for (let i = 0; i < samples; i += 1) {
     const palette = generateColorPaletteForMBTI(indicator);
     data.push({
       label: indicator,
@@ -249,7 +273,9 @@ export function generateMBTIDataForIndicator(
 /**
  * 데이터셋을 JSON 파일로 저장하기 위한 형식으로 변환
  */
-export function formatDatasetForExport(dataset: Record<MBTIIndicator, MBTIData[]>): Record<string, MBTIData[]> {
+export function formatDatasetForExport(
+  dataset: Record<MBTIIndicator, MBTIData[]>
+): Record<string, MBTIData[]> {
   return {
     'e-i': [...dataset.E, ...dataset.I],
     's-n': [...dataset.S, ...dataset.N],

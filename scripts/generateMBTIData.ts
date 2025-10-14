@@ -4,28 +4,36 @@
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { formatDatasetForExport, generateMBTIDataset } from '../src/utils/MBTIColorGenerator';
+
+import {
+  formatDatasetForExport,
+  generateMBTIDataset,
+} from '../src/utils/MBTIColorGenerator';
 
 const SAMPLES_PER_INDICATOR = 1000;
 const OUTPUT_DIR = join(process.cwd(), 'public', 'data', 'training-data');
 
 async function main() {
+  // eslint-disable-next-line no-console
   console.log('🎨 MBTI 색상 학습 데이터 생성 시작...');
 
   // 출력 디렉토리 생성
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR, { recursive: true });
+    // eslint-disable-next-line no-console
     console.log(`📁 출력 디렉토리 생성: ${OUTPUT_DIR}`);
   }
 
   try {
     // 데이터셋 생성
+    // eslint-disable-next-line no-console
     console.log(`📊 각 MBTI 지표별 ${SAMPLES_PER_INDICATOR}개 샘플 생성 중...`);
     const dataset = generateMBTIDataset(SAMPLES_PER_INDICATOR);
 
     // 지표별 개수 확인
     const indicators = ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'] as const;
     indicators.forEach((indicator) => {
+      // eslint-disable-next-line no-console
       console.log(`  ${indicator}: ${dataset[indicator].length}개 샘플`);
     });
 
@@ -40,34 +48,49 @@ async function main() {
       { key: 'j-p', filename: 'j-p.json' },
     ];
 
-    for (const mapping of fileMappings) {
+    fileMappings.forEach((mapping) => {
       const filePath = join(OUTPUT_DIR, mapping.filename);
       const data = exportData[mapping.key];
 
       writeFileSync(filePath, JSON.stringify(data, null, 2));
+      // eslint-disable-next-line no-console
       console.log(`💾 ${mapping.filename} 저장 완료 (${data.length}개 샘플)`);
-    }
+    });
 
     // 전체 데이터셋도 저장 (선택사항)
     const fullDatasetPath = join(OUTPUT_DIR, 'full-dataset.json');
     writeFileSync(fullDatasetPath, JSON.stringify(dataset, null, 2));
+    // eslint-disable-next-line no-console
     console.log(`💾 full-dataset.json 저장 완료`);
 
     // 통계 정보 출력
-    const totalSamples = Object.values(dataset).reduce((sum, data) => sum + data.length, 0);
+    const totalSamples = Object.values(dataset).reduce(
+      (sum, data) => sum + data.length,
+      0
+    );
+    // eslint-disable-next-line no-console
     console.log(`\n✅ 데이터 생성 완료!`);
+    // eslint-disable-next-line no-console
     console.log(`📈 총 샘플 수: ${totalSamples}개`);
+    // eslint-disable-next-line no-console
     console.log(`📁 저장 위치: ${OUTPUT_DIR}`);
+    // eslint-disable-next-line no-console
     console.log(`\n📋 생성된 파일:`);
     fileMappings.forEach((mapping) => {
+      // eslint-disable-next-line no-console
       console.log(`  - ${mapping.filename}`);
     });
+    // eslint-disable-next-line no-console
     console.log(`  - full-dataset.json`);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('❌ 데이터 생성 중 오류 발생:', error);
     process.exit(1);
   }
 }
 
 // 스크립트 실행
-main().catch(console.error);
+main().catch((error) => {
+  // eslint-disable-next-line no-console
+  console.error(error);
+});
