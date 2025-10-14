@@ -26,6 +26,8 @@ export interface MBTIColorRule {
   warmTone: boolean;
   includeNeutral: boolean;
   complementary: boolean;
+  colorScheme?: 'analogous' | 'complementary' | 'triadic' | 'random';
+  orderliness?: 'high' | 'medium' | 'low';
 }
 
 /**

@@ -67,23 +67,27 @@ const MBTI_COLOR_RULES: MBTIColorRules = {
     includeNeutral: false,
     complementary: false,
   },
-  // J (판단): 정렬된 색상 계열, 보색 관계
+  // J (판단): 체계적이고 정렬된 색상, 유사색상 계열, 보색 관계
   J: {
     hueRange: [0, 360], // 전체 색조 범위
-    saturationRange: [40, 80],
-    lightnessRange: [40, 70],
+    saturationRange: [50, 85], // 높은 채도로 명확한 색상
+    lightnessRange: [45, 75], // 일정한 밝기 범위
     warmTone: false,
     includeNeutral: false,
-    complementary: true,
+    complementary: true, // 보색 관계 강조
+    colorScheme: 'analogous', // 유사색상 계열 선호
+    orderliness: 'high', // 체계적인 색상 배치
   },
-  // P (인식): 무작위 색상 조합, 비보색 관계
+  // P (인식): 자유롭고 다양한 색상 조합, 대비가 큰 색상들
   P: {
     hueRange: [0, 360], // 전체 색조 범위
-    saturationRange: [30, 90],
-    lightnessRange: [20, 80],
+    saturationRange: [20, 95], // 매우 다양한 채도
+    lightnessRange: [15, 85], // 매우 다양한 밝기
     warmTone: false,
-    includeNeutral: true,
-    complementary: false,
+    includeNeutral: true, // 중성색 포함
+    complementary: false, // 비보색 관계
+    colorScheme: 'random', // 무작위 색상 조합
+    orderliness: 'low', // 자유로운 색상 배치
   },
 };
 
@@ -171,48 +175,131 @@ function getComplementaryHue(hue: number): number {
 }
 
 /**
+ * 유사색상 생성 (J 타입용)
+ */
+function generateAnalogousColors(baseHue: number, count: number): number[] {
+  const hues: number[] = [];
+  const step = 30; // 30도씩 차이
+  
+  for (let i = 0; i < count; i += 1) {
+    const offset = (i - Math.floor(count / 2)) * step;
+    hues.push((baseHue + offset + 360) % 360);
+  }
+  
+  return hues;
+}
+
+/**
+ * 삼원색 생성 (J 타입용)
+ */
+function generateTriadicColors(baseHue: number): number[] {
+  return [
+    baseHue,
+    (baseHue + 120) % 360,
+    (baseHue + 240) % 360,
+  ];
+}
+
+/**
  * 특정 MBTI 지표에 대한 색상 팔레트 생성
  */
 function generateColorPaletteForMBTI(indicator: MBTIIndicator): string[] {
   const rules = MBTI_COLOR_RULES[indicator];
   const palette: string[] = [];
 
-  // 5개 색상 생성
-  for (let i = 0; i < 5; i += 1) {
-    let hue: number;
-    let saturation: number;
+  // J와 P에 대한 특별한 처리
+  if (indicator === 'J') {
+    // J: 체계적이고 정렬된 색상
+    const baseHue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
+    
+    if (rules.colorScheme === 'analogous') {
+      // 유사색상 계열
+      const hues = generateAnalogousColors(baseHue, 5);
+      hues.forEach((hue) => {
+        const saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
+        const lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+        palette.push(hslToHex(hue, saturation, lightness));
+      });
+    } else if (rules.complementary) {
+      // 보색 관계 활용
+      const hues = [baseHue, getComplementaryHue(baseHue)];
+      for (let i = 0; i < 5; i += 1) {
+        const hue = hues[i % 2];
+        const saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
+        const lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+        palette.push(hslToHex(hue, saturation, lightness));
+      }
+    }
+  } else if (indicator === 'P') {
+    // P: 자유롭고 다양한 색상 조합
+    for (let i = 0; i < 5; i += 1) {
+      let hue: number;
+      let saturation: number;
+      let lightness: number;
 
-    if (rules.complementary && i > 0 && Math.random() < 0.3) {
-      // 30% 확률로 보색 관계 활용
-      const baseHue =
-        palette.length > 0
-          ? (Number.parseInt(
-              palette[palette.length - 1]?.slice(1, 3) ?? '0',
-              16
-            ) *
-              360) /
-            255
-          : randomInRange(rules.hueRange[0], rules.hueRange[1]);
-      hue = getComplementaryHue(baseHue);
-    } else {
+      // 매우 다양한 색상 조합
       hue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
+      saturation = randomInRange(rules.saturationRange[0], rules.saturationRange[1]);
+      lightness = randomInRange(rules.lightnessRange[0], rules.lightnessRange[1]);
+
+      // 중성색 포함 옵션 (P는 더 자주)
+      if (rules.includeNeutral && Math.random() < 0.4) {
+        saturation = randomInRange(0, 30);
+      }
+
+      // 대비가 큰 색상들 (밝기 차이)
+      if (i > 0 && Math.random() < 0.6) {
+        const prevLightness = Number.parseInt(
+          palette[palette.length - 1]?.slice(5, 7) ?? '80',
+          16
+        ) / 255 * 100;
+        
+        // 이전 색상과 대비되는 밝기
+        lightness = prevLightness > 50 
+          ? randomInRange(15, 45) 
+          : randomInRange(55, 85);
+      }
+
+      palette.push(hslToHex(hue, saturation, lightness));
     }
+  } else {
+    // 다른 지표들은 기존 로직 사용
+    for (let i = 0; i < 5; i += 1) {
+      let hue: number;
+      let saturation: number;
 
-    saturation = randomInRange(
-      rules.saturationRange[0],
-      rules.saturationRange[1]
-    );
-    const lightness = randomInRange(
-      rules.lightnessRange[0],
-      rules.lightnessRange[1]
-    );
+      if (rules.complementary && i > 0 && Math.random() < 0.3) {
+        // 30% 확률로 보색 관계 활용
+        const baseHue =
+          palette.length > 0
+            ? (Number.parseInt(
+                palette[palette.length - 1]?.slice(1, 3) ?? '0',
+                16
+              ) *
+                360) /
+              255
+            : randomInRange(rules.hueRange[0], rules.hueRange[1]);
+        hue = getComplementaryHue(baseHue);
+      } else {
+        hue = randomInRange(rules.hueRange[0], rules.hueRange[1]);
+      }
 
-    // 무채색 포함 옵션
-    if (rules.includeNeutral && Math.random() < 0.2) {
-      saturation = randomInRange(0, 20);
+      saturation = randomInRange(
+        rules.saturationRange[0],
+        rules.saturationRange[1]
+      );
+      const lightness = randomInRange(
+        rules.lightnessRange[0],
+        rules.lightnessRange[1]
+      );
+
+      // 무채색 포함 옵션
+      if (rules.includeNeutral && Math.random() < 0.2) {
+        saturation = randomInRange(0, 20);
+      }
+
+      palette.push(hslToHex(hue, saturation, lightness));
     }
-
-    palette.push(hslToHex(hue, saturation, lightness));
   }
 
   return palette;
