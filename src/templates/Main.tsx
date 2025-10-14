@@ -1,8 +1,5 @@
 import React, { ReactNode } from 'react';
 
-import Link from 'next/link';
-
-import { Navbar } from '../navigation/Navbar';
 import { AppConfig } from '../utils/AppConfig';
 
 type IMainProps = {
@@ -21,25 +18,6 @@ const Main = (props: IMainProps) => (
             {AppConfig.title}
           </div>
           <div className="text-xl">{AppConfig.description}</div>
-        </div>
-        <div>
-          <Navbar>
-            <li className="mr-6">
-              <Link href="/">
-                <a>Home</a>
-              </Link>
-            </li>
-            <li className="mr-6">
-              <Link href="/about/">
-                <a>About</a>
-              </Link>
-            </li>
-            <li className="mr-6">
-              <a href="https://github.com/ixartz/Next-js-Blog-Boilerplate">
-                GitHub
-              </a>
-            </li>
-          </Navbar>
         </div>
       </div>
 
