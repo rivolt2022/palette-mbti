@@ -11,7 +11,9 @@
     "clean": "rimraf .next out",
     "lint": "next lint",
     "build-types": "tsc --noEmit --pretty",
-    "generate-mbti-data": "tsc scripts/generateMBTIData.ts --outDir temp && node temp/scripts/generateMBTIData.js && rmdir /s /q temp"
+    "generate-mbti-data": "tsc scripts/generateMBTIData.ts --outDir temp && node temp/scripts/generateMBTIData.js && rmdir /s /q temp",
+    "generate-diverse-data": "tsc scripts/generateDiverseFaceColorData.ts --outDir temp && node temp/scripts/generateDiverseFaceColorData.js && rmdir /s /q temp",
+    "train-diverse-model": "cd ml && python train_diverse_face_to_color.py"
   },
   "dependencies": {
     "@mapbox/rehype-prism": "^0.8.0",

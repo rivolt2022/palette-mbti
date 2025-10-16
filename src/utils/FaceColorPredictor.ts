@@ -77,16 +77,23 @@ export class FaceColorPredictor {
     if (this.isModelsLoaded) return;
 
     try {
-      // 향상된 모델 우선 시도, 실패하면 기존 모델 사용
+      // 다양한 모델 우선 시도, 실패하면 다른 모델들 시도
       try {
-        const enhancedModelUrl = '/models/enhanced-face-to-color/model.json';
-        this.faceColorModel = await tf.loadLayersModel(enhancedModelUrl);
-        console.log('✅ 향상된 얼굴-색상 모델 로드 완료 (148차원 입력)');
-      } catch (enhancedError) {
-        console.log('⚠️ 향상된 모델 로드 실패, 기존 모델 사용');
-        const modelUrl = '/models/face-to-color/model.json';
-        this.faceColorModel = await tf.loadLayersModel(modelUrl);
-        console.log('✅ 기존 얼굴-색상 모델 로드 완료 (128차원 입력)');
+        const diverseModelUrl = '/models/diverse-face-to-color/model.json';
+        this.faceColorModel = await tf.loadLayersModel(diverseModelUrl);
+        console.log('✅ 다양한 얼굴-색상 모델 로드 완료 (148차원 입력)');
+      } catch (diverseError) {
+        console.log('⚠️ 다양한 모델 로드 실패, 향상된 모델 시도');
+        try {
+          const enhancedModelUrl = '/models/enhanced-face-to-color/model.json';
+          this.faceColorModel = await tf.loadLayersModel(enhancedModelUrl);
+          console.log('✅ 향상된 얼굴-색상 모델 로드 완료 (148차원 입력)');
+        } catch (enhancedError) {
+          console.log('⚠️ 향상된 모델 로드 실패, 기존 모델 사용');
+          const modelUrl = '/models/face-to-color/model.json';
+          this.faceColorModel = await tf.loadLayersModel(modelUrl);
+          console.log('✅ 기존 얼굴-색상 모델 로드 완료 (128차원 입력)');
+        }
       }
       this.isModelsLoaded = true;
     } catch (error) {
@@ -209,11 +216,11 @@ export class FaceColorPredictor {
   }
 
   /**
-   * 색상 다양성을 강화하는 함수
+   * 색상 다양성을 강화하는 함수 (MBTI 예측을 위한 대폭 개선)
    */
   private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[]): ColorPalette {
     const enhancedColors = palette.colors.map((color, index) => {
-      // 랜덤 시드를 사용한 색상 변형
+      // 랜덤 시드를 사용한 색상 변형 (더 강한 변형)
       const seed = randomSeed[index % randomSeed.length];
       
       // RGB 값 추출
@@ -222,35 +229,49 @@ export class FaceColorPredictor {
       let g = parseInt(hex.substring(2, 4), 16) / 255;
       let b = parseInt(hex.substring(4, 6), 16) / 255;
       
-      // 강한 색상 변형 적용
-      const variation = (seed - 0.5) * 0.8; // -0.4 ~ +0.4 범위
+      // 색상 공간 변환 (RGB → HSL)
+      const hsl = this.rgbToHsl(r, g, b);
+      let [h, s, l] = hsl;
       
-      // 색상 채널별 변형
-      r = Math.max(0, Math.min(1, r + variation * 0.5));
-      g = Math.max(0, Math.min(1, g + variation * 0.3));
-      b = Math.max(0, Math.min(1, b + variation * 0.7));
+      // 더 강한 색상 변형 적용
+      const hueVariation = (seed - 0.5) * 120; // ±60도 색상 변화
+      const saturationVariation = (seed - 0.5) * 0.6; // ±30% 채도 변화
+      const lightnessVariation = (seed - 0.5) * 0.4; // ±20% 밝기 변화
       
-      // 채도 강화
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const saturation = max === 0 ? 0 : (max - min) / max;
+      // 색상 변형 적용
+      h = (h + hueVariation + 360) % 360;
+      s = Math.max(0, Math.min(1, s + saturationVariation));
+      l = Math.max(0, Math.min(1, l + lightnessVariation));
       
-      if (saturation < 0.3) {
-        // 채도가 낮으면 강화
-        const enhanceFactor = 1.5 + seed * 0.5;
-        r += (max - r) * enhanceFactor * 0.3;
-        g += (max - g) * enhanceFactor * 0.3;
-        b += (max - b) * enhanceFactor * 0.3;
+      // 색상 카테고리별 특별 처리
+      const categorySeed = randomSeed[(index + 1) % randomSeed.length];
+      
+      if (categorySeed < 0.2) {
+        // 선명하고 대비가 강한 색상
+        s = Math.max(0.7, s);
+        l = l > 0.5 ? Math.min(0.9, l + 0.2) : Math.max(0.1, l - 0.2);
+      } else if (categorySeed < 0.4) {
+        // 부드럽고 조화로운 색상
+        s = Math.min(0.6, s);
+        l = Math.max(0.4, Math.min(0.8, l));
+      } else if (categorySeed < 0.6) {
+        // 차가운 톤
+        h = (h + 180) % 360; // 보색으로 변환
+        s = Math.max(0.5, s);
+      } else if (categorySeed < 0.8) {
+        // 따뜻한 톤
+        if (h > 180) h = (h - 60) % 360;
+        else h = (h + 60) % 360;
+        s = Math.max(0.6, s);
+      } else {
+        // 완전 랜덤 변형
+        h = (h + Math.random() * 360) % 360;
+        s = Math.random();
+        l = Math.random();
       }
       
-      // 밝기 조정
-      const brightness = (r + g + b) / 3;
-      if (brightness < 0.3) {
-        const brightenFactor = 0.5 + seed * 0.3;
-        r = Math.min(1, r + brightenFactor);
-        g = Math.min(1, g + brightenFactor);
-        b = Math.min(1, b + brightenFactor);
-      }
+      // HSL → RGB 변환
+      const rgb = this.hslToRgb(h, s, l);
       
       // 최종 RGB 값을 16진수로 변환
       const toHex = (n: number) => {
@@ -258,10 +279,64 @@ export class FaceColorPredictor {
         return hex.length === 1 ? `0${hex}` : hex;
       };
       
-      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+      return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
     });
     
     return { colors: enhancedColors };
+  }
+
+  /**
+   * RGB를 HSL로 변환
+   */
+  private rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    let h = 0;
+    const s = max === 0 ? 0 : diff / max;
+    const l = (max + min) / 2;
+    
+    if (diff !== 0) {
+      if (max === r) {
+        h = ((g - b) / diff) % 6;
+      } else if (max === g) {
+        h = (b - r) / diff + 2;
+      } else {
+        h = (r - g) / diff + 4;
+      }
+    }
+    
+    h = (h * 60 + 360) % 360;
+    return [h, s, l];
+  }
+
+  /**
+   * HSL을 RGB로 변환
+   */
+  private hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    h = h / 360;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+    const m = l - c / 2;
+    
+    let r = 0, g = 0, b = 0;
+    
+    if (0 <= h && h < 1/6) {
+      r = c; g = x; b = 0;
+    } else if (1/6 <= h && h < 2/6) {
+      r = x; g = c; b = 0;
+    } else if (2/6 <= h && h < 3/6) {
+      r = 0; g = c; b = x;
+    } else if (3/6 <= h && h < 4/6) {
+      r = 0; g = x; b = c;
+    } else if (4/6 <= h && h < 5/6) {
+      r = x; g = 0; b = c;
+    } else if (5/6 <= h && h < 1) {
+      r = c; g = 0; b = x;
+    }
+    
+    return [r + m, g + m, b + m];
   }
 
   /**

@@ -1,0 +1,29 @@
+{
+  "input_dim": 148,
+  "output_dim": 15,
+  "description": "다양한 얼굴-색상 모델: MBTI 예측을 위한 색상 다양성 확보",
+  "input_breakdown": {
+    "face_descriptor": 128,
+    "physical_features": 15,
+    "random_seed": 5,
+    "total": 148
+  },
+  "features": [
+    "diverse_color_palettes",
+    "face_shape_analysis",
+    "color_harmony",
+    "brightness_variation",
+    "saturation_diversity",
+    "temperature_range"
+  ],
+  "color_categories": [
+    "vibrant",
+    "harmonious",
+    "cool",
+    "warm",
+    "neutral",
+    "contrast",
+    "random"
+  ],
+  "mbti_optimized": true
+}
