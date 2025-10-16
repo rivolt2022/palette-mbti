@@ -66,7 +66,7 @@ export function vectorToPalette(vector: number[]): ColorPalette {
 
   // 벡터 길이를 15로 제한 (5개 색상 × 3 RGB 값)
   const maxLength = Math.min(vector.length, 15);
-  
+
   for (let i = 0; i < maxLength; i += 3) {
     if (i + 2 < maxLength) {
       const r = Math.max(0, Math.min(1, vector[i] || 0));

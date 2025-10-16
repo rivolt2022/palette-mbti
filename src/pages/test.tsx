@@ -57,9 +57,9 @@ const FaceColorTest = () => {
 
         setFaceColorPredictor(facePredictor);
         setMbtiPredictor(mbtiPred);
-        console.log('✅ 모든 모델 로드 완료');
+        // console.log('✅ 모든 모델 로드 완료');
       } catch (error) {
-        console.error('❌ 모델 로드 실패:', error);
+        // console.error('❌ 모델 로드 실패:', error);
       }
     };
     initPredictors();
@@ -95,15 +95,15 @@ const FaceColorTest = () => {
       // MBTI 예측도 함께 실행
       if (mbtiPredictor) {
         try {
-          console.log('MBTI 예측 시작...', result.palette);
+          // console.log('MBTI 예측 시작...', result.palette);
           const mbtiResult = await mbtiPredictor.predictMBTI(result.palette);
-          console.log('MBTI 예측 결과:', mbtiResult);
+          // console.log('MBTI 예측 결과:', mbtiResult);
           setMbtiPrediction(mbtiResult);
         } catch (mbtiError) {
-          console.error('MBTI 예측 실패:', mbtiError);
+          // console.error('MBTI 예측 실패:', mbtiError);
         }
       } else {
-        console.log('MBTI 예측기 없음');
+        // console.log('MBTI 예측기 없음');
       }
     } catch (error) {
       console.error('얼굴 분석 실패:', error);
@@ -117,6 +117,20 @@ const FaceColorTest = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // File을 ImageElement로 변환하는 헬퍼 함수
+  const createImageElement = (file: File): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   // 여러 팔레트 생성
@@ -137,20 +151,6 @@ const FaceColorTest = () => {
     } finally {
       setIsLoadingVariations(false);
     }
-  };
-
-  // File을 ImageElement로 변환하는 헬퍼 함수
-  const createImageElement = (file: File): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        img.src = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
   };
 
   return (
