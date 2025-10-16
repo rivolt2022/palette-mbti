@@ -54,3 +54,8 @@ ml/public/data/diverse-face-color/diverse-face-color-dataset.json
 ml/public/data/diverse-face-color/diverse-face-color-dataset.json
 public/data/diverse-face-color/diverse-face-color-dataset.json
 public/data/diverse-face-color/training-data.json
+public/data/training-data/e-i.json
+public/data/training-data/full-dataset.json
+public/data/training-data/j-p.json
+public/data/training-data/s-n.json
+public/data/training-data/t-f.json

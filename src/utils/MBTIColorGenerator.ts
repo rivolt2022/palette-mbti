@@ -7,7 +7,7 @@ import type {
   MBTIColorRules,
   MBTIData,
   MBTIIndicator,
-} from '@/types/MBTIData';
+} from '../types/MBTIData';
 
 /**
  * 이미지 기반 MBTI 색상 규칙 정의
