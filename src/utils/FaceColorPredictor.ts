@@ -228,12 +228,140 @@ export class FaceColorPredictor {
   }
 
   /**
+   * 감정에 따라 색상을 조정하는 함수
+   */
+  private adjustColorsForEmotion(palette: ColorPalette, emotion: string): ColorPalette {
+    const adjustedColors = palette.colors.map(color => {
+      const [r, g, b] = this.hexToRgbNormalized(color);
+      let [h, s, l] = this.rgbToHsl(r, g, b);
+      
+      switch(emotion) {
+        case 'happy':
+          // 밝고 선명한 색상으로 조정 (웃는 얼굴) - 파스텔톤 지양
+          l = Math.max(0.5, Math.min(0.8, l + 0.1)); // 밝기 조정 (너무 밝지 않게)
+          s = Math.max(0.8, Math.min(1.0, s + 0.4)); // 채도 대폭 증가 (선명하게)
+          // 따뜻한 색상으로 조정 (노랑, 주황, 빨강 계열)
+          if (h < 60 || h > 300) {
+            h = (h + 30) % 360; // 따뜻한 색상으로 이동
+          }
+          break;
+          
+        case 'sad':
+          // 어둡고 차분한 색상으로 조정 (우울한 얼굴)
+          l = Math.max(0.2, Math.min(0.5, l - 0.2));
+          s = Math.max(0.3, Math.min(0.6, s - 0.1));
+          // 차가운 색상으로 조정 (파랑, 보라 계열)
+          if (h > 180 && h < 300) {
+            h = (h + 60) % 360; // 더 차가운 색상으로 이동
+          }
+          break;
+          
+        case 'angry':
+          // 선명하고 대비가 강한 색상으로 조정 (화난 얼굴)
+          s = Math.max(0.8, Math.min(1.0, s + 0.3));
+          l = Math.max(0.4, Math.min(0.7, l));
+          // 빨강 계열 색상으로 조정
+          if (h < 30 || h > 330) {
+            h = 0; // 빨강으로 고정
+          } else {
+            h = (h - 60) % 360; // 빨강에 가깝게 이동
+          }
+          break;
+          
+        case 'surprised':
+          // 밝고 선명한 색상으로 조정 (놀란 얼굴)
+          l = Math.max(0.7, Math.min(0.95, l + 0.3));
+          s = Math.max(0.8, Math.min(1.0, s + 0.2));
+          // 노랑, 주황 계열 색상으로 조정
+          if (h < 60) {
+            h = (h + 45) % 360; // 노랑-주황 계열로 이동
+          }
+          break;
+          
+        case 'fearful':
+          // 어둡고 차분한 색상으로 조정 (무서워하는 얼굴)
+          l = Math.max(0.1, Math.min(0.4, l - 0.3));
+          s = Math.max(0.2, Math.min(0.5, s - 0.2));
+          // 차가운 색상으로 조정 (파랑, 보라 계열)
+          h = (h + 120) % 360; // 차가운 색상으로 이동
+          break;
+          
+        case 'disgusted':
+          // 어둡고 탁한 색상으로 조정 (역겨워하는 얼굴)
+          l = Math.max(0.3, Math.min(0.6, l - 0.1));
+          s = Math.max(0.1, Math.min(0.4, s - 0.3));
+          // 갈색, 올리브 계열 색상으로 조정
+          h = (h + 90) % 360; // 갈색 계열로 이동
+          break;
+          
+        case 'neutral':
+          // 중간 톤의 색상으로 조정 (무표정한 얼굴)
+          l = Math.max(0.4, Math.min(0.7, l));
+          s = Math.max(0.4, Math.min(0.7, s));
+          // 색상 변화 최소화
+          break;
+          
+        default:
+          // 기본값 유지
+          break;
+      }
+      
+      const [newR, newG, newB] = this.hslToRgb(h, s, l);
+      return this.rgbToHex(newR, newG, newB);
+    });
+    
+    return { colors: adjustedColors };
+  }
+
+  /**
+   * 16진수 색상을 RGB로 변환 (0-1 범위)
+   */
+  private hexToRgbNormalized(hexColor: string): [number, number, number] {
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    return [r, g, b];
+  }
+
+  /**
+   * RGB 값을 16진수 색상으로 변환
+   */
+  private rgbToHex(r: number, g: number, b: number): string {
+    const toHex = (n: number) => {
+      const hex = Math.round(n * 255).toString(16);
+      return hex.length === 1 ? `0${hex}` : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  /**
+   * 얼굴 특징을 기반으로 일관된 시드 생성 (동일한 이미지에 대해 같은 결과 보장)
+   */
+  private generateConsistentSeed(faceDescriptor: Float32Array, physicalFeatures: number[]): number[] {
+    // 얼굴 descriptor의 일부 값들을 사용하여 시드 생성
+    const descriptorValues = Array.from(faceDescriptor).slice(0, 10); // 처음 10개 값 사용
+    const physicalValues = physicalFeatures.slice(0, 5); // 처음 5개 값 사용
+    
+    // 시드 생성 (0-1 범위로 정규화)
+    const seed1 = Math.abs(descriptorValues[0] + descriptorValues[5]) % 1;
+    const seed2 = Math.abs(descriptorValues[1] + descriptorValues[6]) % 1;
+    const seed3 = Math.abs(descriptorValues[2] + descriptorValues[7]) % 1;
+    const seed4 = Math.abs(descriptorValues[3] + descriptorValues[8]) % 1;
+    const seed5 = Math.abs(descriptorValues[4] + descriptorValues[9]) % 1;
+    
+    return [seed1, seed2, seed3, seed4, seed5];
+  }
+
+  /**
    * 색상 다양성을 강화하는 함수 (MBTI 예측을 위한 대폭 개선)
    */
-  private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[]): ColorPalette {
+  private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[], emotion?: string): ColorPalette {
     const enhancedColors = palette.colors.map((color, index) => {
-      // 랜덤 시드를 사용한 색상 변형 (더 강한 변형)
+      // 각 색상마다 다른 시드 사용 (색상 다양성 확보)
       const seed = randomSeed[index % randomSeed.length];
+      const colorIndex = index; // 색상 인덱스 추가
       
       // RGB 값 추출
       const hexColor = color.replace('#', '');
@@ -245,8 +373,8 @@ export class FaceColorPredictor {
       const hsl = this.rgbToHsl(r, g, b);
       let [hue, saturation, lightness] = hsl;
       
-      // 더 강한 색상 변형 적용
-      const hueVariation = (seed - 0.5) * 120; // ±60도 색상 변화
+      // 더 강한 색상 변형 적용 (파스텔톤 지양, 색상 다양성 확보)
+      const hueVariation = (seed - 0.5) * 180 + (colorIndex * 72); // ±90도 + 색상별 72도씩 차이
       const saturationVariation = (seed - 0.5) * 0.6; // ±30% 채도 변화
       const lightnessVariation = (seed - 0.5) * 0.4; // ±20% 밝기 변화
       
@@ -255,31 +383,35 @@ export class FaceColorPredictor {
       saturation = Math.max(0, Math.min(1, saturation + saturationVariation));
       lightness = Math.max(0, Math.min(1, lightness + lightnessVariation));
       
-      // 색상 카테고리별 특별 처리
+      // 색상 카테고리별 특별 처리 (색상 인덱스 기반)
       const categorySeed = randomSeed[(index + 1) % randomSeed.length];
+      const colorType = colorIndex % 5; // 5가지 색상 타입
       
-      if (categorySeed < 0.2) {
-        // 선명하고 대비가 강한 색상
-        saturation = Math.max(0.7, saturation);
-        lightness = lightness > 0.5 ? Math.min(0.9, lightness + 0.2) : Math.max(0.1, lightness - 0.2);
-      } else if (categorySeed < 0.4) {
-        // 부드럽고 조화로운 색상
-        saturation = Math.min(0.6, saturation);
-        lightness = Math.max(0.4, Math.min(0.8, lightness));
-      } else if (categorySeed < 0.6) {
-        // 차가운 톤
-        hue = (hue + 180) % 360; // 보색으로 변환
-        saturation = Math.max(0.5, saturation);
-      } else if (categorySeed < 0.8) {
-        // 따뜻한 톤
-        if (hue > 180) hue = (hue - 60) % 360;
-        else hue = (hue + 60) % 360;
-        saturation = Math.max(0.6, saturation);
+      if (colorType === 0) {
+        // 빨강 계열 (따뜻하고 강렬한 색상)
+        hue = (hue + 60) % 360;
+        saturation = Math.max(0.8, Math.min(1.0, saturation + 0.3));
+        lightness = Math.max(0.3, Math.min(0.7, lightness));
+      } else if (colorType === 1) {
+        // 노랑-주황 계열 (밝고 따뜻한 색상)
+        hue = (hue + 120) % 360;
+        saturation = Math.max(0.7, Math.min(0.9, saturation + 0.2));
+        lightness = Math.max(0.4, Math.min(0.8, lightness + 0.1));
+      } else if (colorType === 2) {
+        // 초록-청록 계열 (자연스러운 색상)
+        hue = (hue + 180) % 360;
+        saturation = Math.max(0.8, Math.min(1.0, saturation + 0.4));
+        lightness = Math.max(0.3, Math.min(0.7, lightness));
+      } else if (colorType === 3) {
+        // 파랑-보라 계열 (차가운 색상)
+        hue = (hue + 240) % 360;
+        saturation = Math.max(0.8, Math.min(1.0, saturation + 0.4));
+        lightness = Math.max(0.2, Math.min(0.6, lightness));
       } else {
-        // 완전 랜덤 변형
-        hue = (hue + Math.random() * 360) % 360;
-        saturation = Math.random();
-        lightness = Math.random();
+        // 보라-핑크 계열 (독특한 색상)
+        hue = (hue + 300) % 360;
+        saturation = Math.max(0.7, Math.min(1.0, saturation + 0.3));
+        lightness = Math.max(0.3, Math.min(0.8, lightness));
       }
       
       // HSL → RGB 변환
@@ -357,7 +489,8 @@ export class FaceColorPredictor {
   async predictColorFromFace(
     faceDescriptor: Float32Array,
     landmarks?: FaceLandmarks | null,
-    randomSeed?: number[]
+    randomSeed?: number[],
+    emotion?: string
   ): Promise<ColorPalette> {
     if (!this.isModelsLoaded) {
       await this.loadFaceColorModel();
@@ -387,8 +520,8 @@ export class FaceColorPredictor {
         // 2. 15차원 물리적 특징 추출
         const physicalFeatures = FaceFeatureExtractor.extractFeatures(landmarks);
 
-        // 3. 5차원 랜덤 시드 생성 (더 강한 변형을 위해)
-        randomSeedArray = randomSeed || FaceFeatureExtractor.generateRandomSeed();
+        // 3. 5차원 랜덤 시드 생성 (얼굴 특징 기반으로 일관된 시드 생성)
+        randomSeedArray = randomSeed || this.generateConsistentSeed(faceDescriptor, physicalFeatures);
 
         // 4. 148차원 입력 벡터 조합
         inputVector = [...descriptorArray, ...physicalFeatures, ...randomSeedArray];
@@ -412,10 +545,17 @@ export class FaceColorPredictor {
       // 15차원 벡터를 5개 색상 팔레트로 변환
       let palette = vectorToPalette(Array.from(predictionArray));
       
+      // 감정 기반 색상 조정 (모든 모델에 적용)
+      if (emotion) {
+        console.log(`😊 감정 기반 색상 조정: ${emotion}`);
+        palette = this.adjustColorsForEmotion(palette, emotion);
+        console.log('🎨 감정 조정된 색상 팔레트:', palette.colors);
+      }
+      
       // 색상 다양성 강화 (향상된 모델인 경우)
       if (inputDim === 148) {
         console.log('🎨 원본 색상 팔레트:', palette.colors);
-        palette = this.enhanceColorDiversity(palette, randomSeedArray);
+        palette = this.enhanceColorDiversity(palette, randomSeedArray, emotion);
         console.log('✨ 다양성 강화된 색상 팔레트:', palette.colors);
       }
 
@@ -447,7 +587,9 @@ export class FaceColorPredictor {
       // 2. 색상 팔레트 예측
       const palette = await this.predictColorFromFace(
         faceAnalysis.faceDescriptor,
-        faceAnalysis.landmarks
+        faceAnalysis.landmarks,
+        undefined,
+        faceAnalysis.emotion
       );
 
       return {
@@ -540,7 +682,8 @@ export class FaceColorPredictor {
   async predictMultipleVariations(
     faceDescriptor: Float32Array,
     landmarks: FaceLandmarks | null,
-    count: number = 5
+    count: number = 5,
+    emotion?: string
   ): Promise<ColorPalette[]> {
     if (!this.isModelsLoaded) {
       await this.loadFaceColorModel();
@@ -554,12 +697,14 @@ export class FaceColorPredictor {
 
     const palettePromises = Array.from({ length: count }, async (_, i) => {
       try {
-        // 각 팔레트마다 다른 랜덤 시드 사용
-        const randomSeed = FaceFeatureExtractor.generateRandomSeed();
+        // 각 팔레트마다 약간씩 다른 시드 사용 (얼굴 특징 기반)
+        const baseSeed = this.generateConsistentSeed(faceDescriptor, landmarks ? FaceFeatureExtractor.extractFeatures(landmarks) : []);
+        const variationSeed = baseSeed.map(seed => (seed + i * 0.1) % 1); // 약간의 변화 추가
         const palette = await this.predictColorFromFace(
           faceDescriptor,
           landmarks,
-          randomSeed
+          variationSeed,
+          emotion
         );
         return palette;
       } catch (error) {
@@ -601,7 +746,8 @@ export class FaceColorPredictor {
       const palettes = await this.predictMultipleVariations(
         faceAnalysis.faceDescriptor,
         faceAnalysis.landmarks,
-        count
+        count,
+        faceAnalysis.emotion
       );
 
       return {
