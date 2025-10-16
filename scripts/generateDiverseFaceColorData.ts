@@ -415,7 +415,7 @@ class FaceFeatureGen {
     const faceHeight = 100; // 160 - 60
     
     // 얼굴 윤곽선 (0-16)
-    for (let i = 0; i < 17; i++) {
+    for (let i = 0; i < 17; i += 1) {
       const angle = (i / 16) * Math.PI;
       const x = centerX + Math.cos(angle) * (faceWidth / 2 + this.generateGaussian(0, 5));
       const y = centerY + Math.sin(angle) * (faceHeight / 2 + this.generateGaussian(0, 5));
@@ -423,21 +423,21 @@ class FaceFeatureGen {
     }
     
     // 눈썹 (17-26)
-    for (let i = 17; i < 27; i++) {
+    for (let i = 17; i < 27; i += 1) {
       const x = centerX - 35 + (i - 17) * 3.5 + this.generateGaussian(0, 3);
       const y = centerY - 30 + this.generateGaussian(0, 2);
       landmarks.push({ x, y });
     }
     
     // 코 (27-35)
-    for (let i = 27; i < 36; i++) {
+    for (let i = 27; i < 36; i += 1) {
       const x = centerX + this.generateGaussian(0, 3);
       const y = centerY - 10 + (i - 27) * 2.5 + this.generateGaussian(0, 1.5);
       landmarks.push({ x, y });
     }
     
     // 눈 (36-47)
-    for (let i = 36; i < 48; i++) {
+    for (let i = 36; i < 48; i += 1) {
       const eyeIndex = i - 36;
       const isLeftEye = eyeIndex < 6;
       const x = isLeftEye ? centerX - 25 : centerX + 25;
@@ -446,7 +446,7 @@ class FaceFeatureGen {
     }
     
     // 입 (48-67)
-    for (let i = 48; i < 68; i++) {
+    for (let i = 48; i < 68; i += 1) {
       const mouthIndex = i - 48;
       const x = centerX - 10 + (mouthIndex - 10) * 1 + this.generateGaussian(0, 2);
       const y = centerY + 10 + Math.sin(mouthIndex * 0.3) * 3 + this.generateGaussian(0, 1.5);
@@ -459,7 +459,7 @@ class FaceFeatureGen {
   /**
    * 15차원 물리적 특징 추출 - 실제 데이터 분포 반영
    */
-  private static generatePhysicalFeatures(landmarks: Array<{ x: number; y: number }>): number[] {
+  private static generatePhysicalFeatures(_landmarks: Array<{ x: number; y: number }>): number[] {
     // 실제 데이터 분석: 0~1 범위, 일부 극값(0, 1) 존재, 평균 0.64
     
     // 극값을 포함한 분포 생성 (베타 분포 사용)
@@ -474,37 +474,37 @@ class FaceFeatureGen {
 
     // 얼굴형 특징 (4차원) - 극값 포함
     const faceShape = {
-      aspectRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
-      jawAngle: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
-      foreheadWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
-      symmetry: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
+      aspectRatio: this.generateValueWithExtremes(generateBetaDistribution, 2, 2),
+      jawAngle: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 1.5),
+      foreheadWidth: this.generateValueWithExtremes(generateBetaDistribution, 2, 1.5),
+      symmetry: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 1.5),
     };
 
     // 눈 특징 (4차원) - 극값 포함
     const eyeFeatures = {
-      eyeSize: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
-      eyeDistance: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
-      eyeHeight: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
-      eyeAngle: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
+      eyeSize: this.generateValueWithExtremes(generateBetaDistribution, 2, 2),
+      eyeDistance: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 2),
+      eyeHeight: this.generateValueWithExtremes(generateBetaDistribution, 2, 1.5),
+      eyeAngle: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 1.5),
     };
 
     // 입 특징 (3차원) - 극값 포함
     const mouthFeatures = {
-      mouthWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
-      mouthHeight: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
-      lipThickness: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
+      mouthWidth: this.generateValueWithExtremes(generateBetaDistribution, 2, 1.5),
+      mouthHeight: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 2),
+      lipThickness: this.generateValueWithExtremes(generateBetaDistribution, 2, 2),
     };
 
     // 코 특징 (2차원) - 극값 포함
     const noseFeatures = {
-      noseLength: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
-      noseWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
+      noseLength: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 2),
+      noseWidth: this.generateValueWithExtremes(generateBetaDistribution, 2, 1.5),
     };
 
     // 전체 비율 (2차원) - 극값 포함
     const faceProportions = {
-      upperFaceRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
-      lowerFaceRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
+      upperFaceRatio: this.generateValueWithExtremes(generateBetaDistribution, 2, 1.5),
+      lowerFaceRatio: this.generateValueWithExtremes(generateBetaDistribution, 1.5, 2),
     };
 
     return [
@@ -549,12 +549,6 @@ class FaceFeatureGen {
     return { emotion, confidence };
   }
 
-  /**
-   * 값을 0-1 범위로 정규화
-   */
-  private static normalizeValue(value: number, min: number, max: number): number {
-    return Math.max(0, Math.min(1, (value - min) / (max - min)));
-  }
 
   /**
    * 얼굴 특징 분석
@@ -623,6 +617,16 @@ class FaceFeatureGen {
     const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     return z0 * std + mean;
   }
+
+  /**
+   * 극값을 포함한 값 생성 헬퍼 함수
+   */
+  private static generateValueWithExtremes(generateBetaDistribution: (alpha: number, beta: number) => number, alpha: number, beta: number): number {
+    if (Math.random() < 0.1) {
+      return Math.random() < 0.5 ? 0 : 1;
+    }
+    return generateBetaDistribution(alpha, beta);
+  }
 }
 
 // 16진수 색상을 RGB로 변환
@@ -635,10 +639,9 @@ function hexToRgbNormalized(hexColor: string): [number, number, number] {
 }
 
 // 얼굴 특징 기반 일관된 시드 생성
-function generateConsistentSeed(faceDescriptor: number[], physicalFeatures: number[]): number[] {
+function generateConsistentSeed(faceDescriptor: number[], _physicalFeatures: number[]): number[] {
   // 얼굴 descriptor의 일부 값들을 사용하여 시드 생성
   const descriptorValues = faceDescriptor.slice(0, 10); // 처음 10개 값 사용
-  const physicalValues = physicalFeatures.slice(0, 5); // 처음 5개 값 사용
   
   // 시드 생성 (0-1 범위로 정규화)
   const seed1 = Math.abs(descriptorValues[0] + descriptorValues[5]) % 1;

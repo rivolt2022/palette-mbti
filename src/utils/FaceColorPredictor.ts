@@ -183,7 +183,7 @@ export class FaceColorPredictor {
           first10: Array.from(detection.descriptor).slice(0, 10),
           min: Math.min(...detection.descriptor),
           max: Math.max(...detection.descriptor),
-          mean: detection.descriptor.reduce((a, b) => a + b, 0) / detection.descriptor.length
+          mean: detection.descriptor.reduce((a: number, b: number) => a + b, 0) / detection.descriptor.length
         });
         
         console.log('🎭 감정 분석 결과:', detection.expressions);
@@ -232,7 +232,7 @@ export class FaceColorPredictor {
         first10: Array.from(detection.descriptor).slice(0, 10),
         min: Math.min(...detection.descriptor),
         max: Math.max(...detection.descriptor),
-        mean: detection.descriptor.reduce((a, b) => a + b, 0) / detection.descriptor.length
+        mean: detection.descriptor.reduce((a: number, b: number) => a + b, 0) / detection.descriptor.length
       });
       
       console.log('🎭 감정 분석 결과:', detection.expressions);
@@ -387,10 +387,9 @@ export class FaceColorPredictor {
   /**
    * 얼굴 특징을 기반으로 일관된 시드 생성 (동일한 이미지에 대해 같은 결과 보장)
    */
-  private generateConsistentSeed(faceDescriptor: Float32Array, physicalFeatures: number[]): number[] {
+  private generateConsistentSeed(faceDescriptor: Float32Array, _physicalFeatures: number[]): number[] {
     // 얼굴 descriptor의 일부 값들을 사용하여 시드 생성
     const descriptorValues = Array.from(faceDescriptor).slice(0, 10); // 처음 10개 값 사용
-    const physicalValues = physicalFeatures.slice(0, 5); // 처음 5개 값 사용
     
     // 시드 생성 (0-1 범위로 정규화)
     const seed1 = Math.abs(descriptorValues[0] + descriptorValues[5]) % 1;
@@ -405,7 +404,7 @@ export class FaceColorPredictor {
   /**
    * 색상 다양성을 강화하는 함수 (MBTI 예측을 위한 대폭 개선)
    */
-  private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[], emotion?: string): ColorPalette {
+  private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[], _emotion?: string): ColorPalette {
     const enhancedColors = palette.colors.map((color, index) => {
       // 각 색상마다 다른 시드 사용 (색상 다양성 확보)
       const seed = randomSeed[index % randomSeed.length];
@@ -432,7 +431,6 @@ export class FaceColorPredictor {
       lightness = Math.max(0, Math.min(1, lightness + lightnessVariation));
       
       // 색상 카테고리별 특별 처리 (색상 인덱스 기반)
-      const categorySeed = randomSeed[(index + 1) % randomSeed.length];
       const colorType = colorIndex % 5; // 5가지 색상 타입
       
       if (colorType === 0) {
@@ -581,14 +579,14 @@ export class FaceColorPredictor {
         first10: descriptorArray.slice(0, 10),
         min: Math.min(...descriptorArray),
         max: Math.max(...descriptorArray),
-        mean: descriptorArray.reduce((a, b) => a + b, 0) / descriptorArray.length
+        mean: descriptorArray.reduce((a: number, b: number) => a + b, 0) / descriptorArray.length
       });
       console.log('👤 물리적 특징 (15차원):', {
         length: physicalFeatures.length,
         values: physicalFeatures,
         min: Math.min(...physicalFeatures),
         max: Math.max(...physicalFeatures),
-        mean: physicalFeatures.reduce((a, b) => a + b, 0) / physicalFeatures.length
+        mean: physicalFeatures.reduce((a: number, b: number) => a + b, 0) / physicalFeatures.length
       });
       console.log('🎲 랜덤 시드 (5차원):', {
         length: randomSeedArray.length,
@@ -612,7 +610,7 @@ export class FaceColorPredictor {
           first10: inputVector.slice(0, 10),
           min: Math.min(...inputVector),
           max: Math.max(...inputVector),
-          mean: inputVector.reduce((a, b) => a + b, 0) / inputVector.length
+          mean: inputVector.reduce((a: number, b: number) => a + b, 0) / inputVector.length
         });
       }
 
@@ -624,16 +622,17 @@ export class FaceColorPredictor {
       const predictionArray = await prediction.data();
 
       // 15차원 벡터를 5개 색상 팔레트로 변환
-      let palette = vectorToPalette(Array.from(predictionArray));
+      const predictionArrayValues = Array.from(predictionArray);
+      let palette = vectorToPalette(predictionArrayValues);
       
       // 상세 디버깅 정보 출력
       console.log('🎨 색상 예측 결과:');
       console.log('📊 예측 벡터 (15차원):', {
-        length: predictionArray.length,
-        values: Array.from(predictionArray),
-        min: Math.min(...predictionArray),
-        max: Math.max(...predictionArray),
-        mean: predictionArray.reduce((a, b) => a + b, 0) / predictionArray.length
+        length: predictionArrayValues.length,
+        values: predictionArrayValues,
+        min: Math.min(...predictionArrayValues),
+        max: Math.max(...predictionArrayValues),
+        mean: predictionArrayValues.reduce((a: number, b: number) => a + b, 0) / predictionArrayValues.length
       });
       console.log('🎨 원본 색상 팔레트:', palette.colors);
       
