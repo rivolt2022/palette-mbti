@@ -513,7 +513,12 @@
       ]
     },
     "compile_config": {
-      "loss": "mse",
+      "loss": {
+        "module": "builtins",
+        "class_name": "function",
+        "config": "improved_diversity_loss",
+        "registered_name": "function"
+      },
       "loss_weights": null,
       "metrics": [
         "mae",
