@@ -365,33 +365,37 @@ class FaceFeatureGen {
   }
 
   /**
-   * 얼굴 descriptor 생성 (128차원) - 실제 특성 반영
+   * 얼굴 descriptor 생성 (128차원) - 실제 데이터 분포 반영
    */
   private static generateFaceDescriptor(): number[] {
     const descriptor = [];
 
-    // 실제 얼굴 descriptor는 얼굴의 전체적인 특징을 압축해서 표현
-    // 각 차원은 특정 얼굴 부위가 아니라 전체적인 특징을 나타냄
+    // 실제 데이터 분석 결과를 바탕으로 생성
+    // 실제 범위: -0.35 ~ 0.35, 평균: 거의 0
     for (let i = 0; i < 128; i += 1) {
-      // 정규분포 기반 생성
-      let value = this.generateGaussian(0, 1);
+      // 정규분포 기반 생성 (실제 데이터와 유사한 분포)
+      let value = this.generateGaussian(0, 0.15); // 표준편차 0.15로 조정
+
+      // 실제 데이터 범위에 맞게 클리핑
+      value = Math.max(-0.35, Math.min(0.35, value));
 
       // 얼굴의 전체적인 특징을 고려한 패턴 적용
-      // 실제 얼굴 descriptor는 얼굴의 고유한 특징을 담고 있음
       if (i < 32) {
         // 얼굴의 전체적인 형태 (더 큰 변화)
-        value *= 1.2;
+        value *= 1.1;
       } else if (i < 64) {
         // 얼굴의 중간 특징 (중간 변화)
-        value *= 0.8;
+        value *= 0.9;
       } else if (i < 96) {
         // 얼굴의 세부 특징 (작은 변화)
-        value *= 0.6;
+        value *= 0.8;
       } else {
         // 얼굴의 미세 특징 (매우 작은 변화)
-        value *= 0.9;
+        value *= 0.95;
       }
 
+      // 최종 클리핑
+      value = Math.max(-0.35, Math.min(0.35, value));
       descriptor.push(value);
     }
 
@@ -399,30 +403,36 @@ class FaceFeatureGen {
   }
 
   /**
-   * 68포인트 랜드마크 생성
+   * 68포인트 랜드마크 생성 - 실제 좌표 범위 반영
    */
   private static generateLandmarks(): Array<{ x: number; y: number }> {
     const landmarks = [];
     
+    // 실제 데이터 분석: x 범위 220~330, y 범위 60~160
+    const centerX = 275; // (220 + 330) / 2
+    const centerY = 110; // (60 + 160) / 2
+    const faceWidth = 110; // 330 - 220
+    const faceHeight = 100; // 160 - 60
+    
     // 얼굴 윤곽선 (0-16)
     for (let i = 0; i < 17; i++) {
       const angle = (i / 16) * Math.PI;
-      const x = 100 + Math.cos(angle) * (50 + this.generateGaussian(0, 10));
-      const y = 100 + Math.sin(angle) * (50 + this.generateGaussian(0, 10));
+      const x = centerX + Math.cos(angle) * (faceWidth / 2 + this.generateGaussian(0, 5));
+      const y = centerY + Math.sin(angle) * (faceHeight / 2 + this.generateGaussian(0, 5));
       landmarks.push({ x, y });
     }
     
     // 눈썹 (17-26)
     for (let i = 17; i < 27; i++) {
-      const x = 80 + (i - 17) * 2 + this.generateGaussian(0, 5);
-      const y = 80 + this.generateGaussian(0, 3);
+      const x = centerX - 35 + (i - 17) * 3.5 + this.generateGaussian(0, 3);
+      const y = centerY - 30 + this.generateGaussian(0, 2);
       landmarks.push({ x, y });
     }
     
     // 코 (27-35)
     for (let i = 27; i < 36; i++) {
-      const x = 100 + this.generateGaussian(0, 5);
-      const y = 100 + (i - 27) * 3 + this.generateGaussian(0, 2);
+      const x = centerX + this.generateGaussian(0, 3);
+      const y = centerY - 10 + (i - 27) * 2.5 + this.generateGaussian(0, 1.5);
       landmarks.push({ x, y });
     }
     
@@ -430,16 +440,16 @@ class FaceFeatureGen {
     for (let i = 36; i < 48; i++) {
       const eyeIndex = i - 36;
       const isLeftEye = eyeIndex < 6;
-      const x = isLeftEye ? 85 : 115;
-      const y = 90 + (eyeIndex % 6) * 2 + this.generateGaussian(0, 2);
+      const x = isLeftEye ? centerX - 25 : centerX + 25;
+      const y = centerY - 20 + (eyeIndex % 6) * 2 + this.generateGaussian(0, 1.5);
       landmarks.push({ x, y });
     }
     
     // 입 (48-67)
     for (let i = 48; i < 68; i++) {
       const mouthIndex = i - 48;
-      const x = 100 + (mouthIndex - 10) * 2 + this.generateGaussian(0, 3);
-      const y = 120 + Math.sin(mouthIndex * 0.3) * 5 + this.generateGaussian(0, 2);
+      const x = centerX - 10 + (mouthIndex - 10) * 1 + this.generateGaussian(0, 2);
+      const y = centerY + 10 + Math.sin(mouthIndex * 0.3) * 3 + this.generateGaussian(0, 1.5);
       landmarks.push({ x, y });
     }
     
@@ -447,42 +457,54 @@ class FaceFeatureGen {
   }
 
   /**
-   * 15차원 물리적 특징 추출 (FaceFeatureExtractor와 동일한 방식)
+   * 15차원 물리적 특징 추출 - 실제 데이터 분포 반영
    */
   private static generatePhysicalFeatures(landmarks: Array<{ x: number; y: number }>): number[] {
-    // 얼굴형 특징 (4차원)
+    // 실제 데이터 분석: 0~1 범위, 일부 극값(0, 1) 존재, 평균 0.64
+    
+    // 극값을 포함한 분포 생성 (베타 분포 사용)
+    const generateBetaDistribution = (alpha: number, beta: number): number => {
+      // 간단한 베타 분포 근사
+      const u1 = Math.random();
+      const u2 = Math.random();
+      const gamma1 = u1**(1/alpha);
+      const gamma2 = u2**(1/beta);
+      return gamma1 / (gamma1 + gamma2);
+    };
+
+    // 얼굴형 특징 (4차원) - 극값 포함
     const faceShape = {
-      aspectRatio: this.normalizeValue(1.2 + this.generateGaussian(0, 0.2), 0.5, 2.0),
-      jawAngle: this.normalizeValue(this.generateGaussian(0, 15), -45, 45),
-      foreheadWidth: this.normalizeValue(0.5 + this.generateGaussian(0, 0.1), 0.2, 0.8),
-      symmetry: this.normalizeValue(0.8 + this.generateGaussian(0, 0.1), 0, 1),
+      aspectRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
+      jawAngle: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
+      foreheadWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
+      symmetry: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
     };
 
-    // 눈 특징 (4차원)
+    // 눈 특징 (4차원) - 극값 포함
     const eyeFeatures = {
-      eyeSize: this.normalizeValue(30 + this.generateGaussian(0, 10), 10, 50),
-      eyeDistance: this.normalizeValue(50 + this.generateGaussian(0, 15), 20, 80),
-      eyeHeight: this.normalizeValue(15 + this.generateGaussian(0, 5), 5, 25),
-      eyeAngle: this.normalizeValue(this.generateGaussian(0, 5), -15, 15),
+      eyeSize: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
+      eyeDistance: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
+      eyeHeight: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
+      eyeAngle: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 1.5),
     };
 
-    // 입 특징 (3차원)
+    // 입 특징 (3차원) - 극값 포함
     const mouthFeatures = {
-      mouthWidth: this.normalizeValue(50 + this.generateGaussian(0, 15), 20, 80),
-      mouthHeight: this.normalizeValue(15 + this.generateGaussian(0, 8), 5, 30),
-      lipThickness: this.normalizeValue(8 + this.generateGaussian(0, 4), 2, 15),
+      mouthWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
+      mouthHeight: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
+      lipThickness: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 2),
     };
 
-    // 코 특징 (2차원)
+    // 코 특징 (2차원) - 극값 포함
     const noseFeatures = {
-      noseLength: this.normalizeValue(30 + this.generateGaussian(0, 10), 15, 50),
-      noseWidth: this.normalizeValue(15 + this.generateGaussian(0, 5), 8, 25),
+      noseLength: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
+      noseWidth: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
     };
 
-    // 전체 비율 (2차원)
+    // 전체 비율 (2차원) - 극값 포함
     const faceProportions = {
-      upperFaceRatio: this.normalizeValue(0.25 + this.generateGaussian(0, 0.05), 0.1, 0.4),
-      lowerFaceRatio: this.normalizeValue(0.25 + this.generateGaussian(0, 0.05), 0.1, 0.4),
+      upperFaceRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(2, 1.5),
+      lowerFaceRatio: Math.random() < 0.1 ? (Math.random() < 0.5 ? 0 : 1) : generateBetaDistribution(1.5, 2),
     };
 
     return [
@@ -510,12 +532,19 @@ class FaceFeatureGen {
   }
 
   /**
-   * 감정 정보 생성
+   * 감정 정보 생성 - 실제 데이터 분포 반영
    */
   private static generateEmotion(): { emotion: string; confidence: number } {
     const emotions = ['happy', 'sad', 'angry', 'surprised', 'fearful', 'disgusted', 'neutral'];
+    
+    // 실제 데이터: 매우 명확한 감정 분류 (99.99% 신뢰도)
+    // 80% 확률로 높은 신뢰도, 20% 확률로 중간 신뢰도
+    const isHighConfidence = Math.random() < 0.8;
+    const confidence = isHighConfidence 
+      ? 0.95 + Math.random() * 0.05  // 0.95-1.0 (매우 높은 신뢰도)
+      : 0.7 + Math.random() * 0.25;  // 0.7-0.95 (중간 신뢰도)
+    
     const emotion = emotions[Math.floor(Math.random() * emotions.length)];
-    const confidence = 0.5 + Math.random() * 0.5; // 0.5-1.0
     
     return { emotion, confidence };
   }

@@ -31,6 +31,21 @@ def load_diverse_face_color_data():
     print(f"   출력 차원: {y.shape[1]}")
     print(f"   총 샘플 수: {len(X)}")
     
+    # 실제 데이터 특성 분석
+    print("\n🔍 실제 데이터 특성 분석:")
+    descriptor_data = X[:, :128]
+    physical_features = X[:, 128:143]
+    random_seeds = X[:, 143:148]
+    
+    print(f"   얼굴 descriptor 범위: {descriptor_data.min():.3f} ~ {descriptor_data.max():.3f}")
+    print(f"   물리적 특징 범위: {physical_features.min():.3f} ~ {physical_features.max():.3f}")
+    print(f"   랜덤 시드 범위: {random_seeds.min():.3f} ~ {random_seeds.max():.3f}")
+    
+    # 극값 분석
+    extreme_values = np.sum((physical_features == 0) | (physical_features == 1))
+    total_physical = physical_features.size
+    print(f"   물리적 특징 극값 비율: {extreme_values/total_physical*100:.1f}%")
+    
     return X, y, metadata
 
 def analyze_color_diversity(y, metadata):
@@ -65,33 +80,33 @@ def analyze_color_diversity(y, metadata):
     print(f"   고유 색상 수: {len(unique_colors)}개")
 
 def create_enhanced_diverse_model(input_dim=148, output_dim=15):
-    """다양한 색상 패턴 학습을 위한 향상된 모델"""
+    """실제 데이터 특성을 반영한 향상된 모델"""
     model = keras.Sequential([
-        # 입력층: 148차원
+        # 입력층: 148차원 (실제 데이터 특성 반영)
         keras.layers.Dense(256, activation='relu', input_shape=(input_dim,)),
         keras.layers.BatchNormalization(),
         keras.layers.Dropout(0.4),
         
-        # 은닉층 1: 얼굴 특징 처리
+        # 은닉층 1: 얼굴 descriptor 처리 (128차원)
         keras.layers.Dense(128, activation='relu'),
         keras.layers.BatchNormalization(),
         keras.layers.Dropout(0.3),
         
-        # 은닉층 2: 색상 패턴 학습
+        # 은닉층 2: 물리적 특징 처리 (15차원, 극값 포함)
         keras.layers.Dense(64, activation='relu'),
         keras.layers.BatchNormalization(),
         keras.layers.Dropout(0.2),
         
-        # 은닉층 3: 색상 조합 학습
+        # 은닉층 3: 색상 패턴 학습
         keras.layers.Dense(32, activation='relu'),
         keras.layers.Dropout(0.1),
         
-        # 출력층: 15차원 RGB 벡터
+        # 출력층: 15차원 RGB 벡터 (0~1 범위)
         keras.layers.Dense(output_dim, activation='sigmoid')
     ])
     
-    # 학습률 스케줄링 (콜백으로 처리)
-    optimizer = keras.optimizers.Adam(learning_rate=0.001)
+    # 실제 데이터 특성에 맞는 학습률
+    optimizer = keras.optimizers.Adam(learning_rate=0.0008)  # 약간 낮춤
     
     model.compile(
         optimizer=optimizer,
@@ -101,16 +116,23 @@ def create_enhanced_diverse_model(input_dim=148, output_dim=15):
     
     return model
 
-def create_color_diversity_loss():
-    """색상 다양성을 위한 커스텀 손실 함수"""
-    def diversity_loss(y_true, y_pred):
+def create_improved_diversity_loss():
+    """실제 데이터 특성을 반영한 개선된 손실 함수"""
+    def improved_diversity_loss(y_true, y_pred):
         # 기본 MSE 손실
         mse_loss = tf.keras.losses.mse(y_true, y_pred)
         
+        # 극값에 대한 가중치 조정 (실제 데이터 특성 반영)
+        # 물리적 특징의 극값(0, 1)에 더 높은 가중치 부여
+        extreme_value_mask = tf.cast(
+            (tf.abs(y_true - 0.0) < 0.01) | (tf.abs(y_true - 1.0) < 0.01), 
+            tf.float32
+        )
+        extreme_weight = 1.0 + 0.5 * extreme_value_mask  # 극값에 1.5배 가중치
+        weighted_mse = tf.reduce_mean(tf.square(y_true - y_pred) * extreme_weight)
+        
         # 색상 다양성 손실 (색상 간 거리 최대화)
         batch_size = tf.shape(y_pred)[0]
-        
-        # 5개 색상으로 재구성 (각 색상은 3차원 RGB)
         colors = tf.reshape(y_pred, (batch_size, 5, 3))
         
         # 색상 간 평균 거리 계산
@@ -122,87 +144,155 @@ def create_color_diversity_loss():
         
         if color_distances:
             avg_distance = tf.reduce_mean(tf.stack(color_distances, axis=1), axis=1)
-            diversity_penalty = tf.exp(-avg_distance)  # 거리가 가까우면 페널티
+            diversity_penalty = tf.exp(-avg_distance * 2)  # 더 강한 다양성 페널티
         else:
             diversity_penalty = 0
         
-        # 최종 손실 = MSE + 다양성 페널티
-        return mse_loss + 0.1 * tf.reduce_mean(diversity_penalty)
+        # 색상 대비 손실 (색상 간 대비 최대화)
+        color_contrast = tf.reduce_mean(tf.math.reduce_std(colors, axis=1))  # 각 색상의 표준편차
+        contrast_penalty = tf.exp(-color_contrast * 3)  # 대비가 낮으면 페널티
+        
+        # 최종 손실 = 가중 MSE + 다양성 페널티 + 대비 페널티
+        return weighted_mse + 0.15 * tf.reduce_mean(diversity_penalty) + 0.1 * contrast_penalty
     
-    return diversity_loss
+    return improved_diversity_loss
+
+def improved_data_preprocessing(X, y):
+    """실제 데이터 특성을 반영한 개선된 전처리"""
+    print("🔧 실제 데이터 특성을 반영한 전처리...")
+    
+    # 각 특성별로 다른 정규화 전략 적용
+    X_processed = X.copy()
+    
+    # 얼굴 descriptor (0-127): 이미 -0.35~0.35 범위로 정규화됨
+    descriptor_data = X_processed[:, :128]
+    print(f"   얼굴 descriptor: 범위 {descriptor_data.min():.3f} ~ {descriptor_data.max():.3f}")
+    
+    # 물리적 특징 (128-142): 0~1 범위, 극값 포함
+    physical_features = X_processed[:, 128:143]
+    print(f"   물리적 특징: 범위 {physical_features.min():.3f} ~ {physical_features.max():.3f}")
+    
+    # 랜덤 시드 (143-147): 0~1 범위
+    random_seeds = X_processed[:, 143:148]
+    print(f"   랜덤 시드: 범위 {random_seeds.min():.3f} ~ {random_seeds.max():.3f}")
+    
+    # 각 특성별로 다른 정규화 적용
+    # descriptor는 이미 정규화되어 있으므로 그대로 사용
+    # 물리적 특징과 랜덤 시드는 0~1 범위이므로 그대로 사용
+    
+    return X_processed, y
 
 def train_diverse_face_to_color_model(X, y, metadata):
-    """다양한 얼굴-색상 모델 학습"""
-    print("🧠 다양한 얼굴-색상 모델 학습 시작...")
+    """실제 데이터 특성을 반영한 개선된 모델 학습"""
+    print("🧠 실제 데이터 특성을 반영한 모델 학습 시작...")
+    
+    # 개선된 전처리 적용
+    X_processed, y_processed = improved_data_preprocessing(X, y)
     
     # 데이터 분할
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X_processed, y_processed, test_size=0.2, random_state=42
     )
     
     print(f"   훈련 데이터: {len(X_train)}개")
     print(f"   검증 데이터: {len(X_val)}개")
     
-    # 입력 데이터 정규화
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
+    # 실제 데이터 특성에 맞는 정규화 (각 특성별로 다르게)
+    # descriptor는 이미 정규화되어 있으므로 그대로 사용
+    # 물리적 특징과 랜덤 시드는 0~1 범위이므로 그대로 사용
+    X_train_scaled = X_train
+    X_val_scaled = X_val
     
-    # 모델 생성
+    # 모델 생성 (개선된 손실 함수 사용)
     model = create_enhanced_diverse_model()
+    
+    # 개선된 손실 함수로 모델 재컴파일
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=0.0008),
+        loss=create_improved_diversity_loss(),
+        metrics=['mae', 'cosine_similarity']
+    )
     
     # 모델 구조 출력
     print(f"\n📋 모델 구조:")
     model.summary()
     
-    # 콜백 설정
+    # 실제 데이터 특성에 맞는 콜백 설정
     callbacks = [
+        # 조기 종료 (극값이 많아서 더 많은 에포크 필요)
         keras.callbacks.EarlyStopping(
             monitor='val_loss',
-            patience=25,
+            patience=15,  # 더 많은 인내심
             restore_best_weights=True,
             verbose=1
         ),
+        
+        # 학습률 스케줄링 (실제 데이터 특성에 맞게)
         keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.7,
-            patience=15,
+            patience=8,
             min_lr=1e-6,
             verbose=1
         ),
+        
+        # 모델 체크포인트
         keras.callbacks.ModelCheckpoint(
-            'best_diverse_model.h5',
+            'best_diverse_face_to_color_model.h5',
             monitor='val_loss',
             save_best_only=True,
             verbose=1
         )
     ]
     
-    # 학습
-    print("\n🚀 학습 시작...")
+    print(f"\n🚀 학습 시작 (실제 데이터 특성 반영):")
+    print(f"   배치 크기: 32")
+    print(f"   최대 에포크: 100")
+    print(f"   조기 종료: 15 에포크 인내심")
+    print(f"   학습률 감소: 8 에포크 인내심")
+    
+    # 학습 실행
     history = model.fit(
         X_train_scaled, y_train,
         validation_data=(X_val_scaled, y_val),
-        epochs=200,
-        batch_size=64,
+        epochs=100,
+        batch_size=32,
         callbacks=callbacks,
         verbose=1
     )
     
-    # 최종 성능 출력
-    final_loss = history.history['loss'][-1]
-    val_loss = history.history['val_loss'][-1]
-    print(f"\n📊 최종 성능:")
-    print(f"   훈련 손실: {final_loss:.6f}")
-    print(f"   검증 손실: {val_loss:.6f}")
+    return model, history, X_val_scaled, y_val
+
+def evaluate_model_performance(model, X_val, y_val, metadata):
+    """실제 데이터 특성을 반영한 모델 성능 평가"""
+    print("\n📊 실제 데이터 특성을 반영한 모델 성능 평가:")
     
-    # 색상 다양성 테스트
-    test_color_diversity(model, X_val_scaled, y_val)
+    # 예측 수행
+    y_pred = model.predict(X_val, verbose=0)
     
-    return model, scaler
+    # 기본 메트릭
+    mse = np.mean((y_val - y_pred) ** 2)
+    mae = np.mean(np.abs(y_val - y_pred))
+    
+    print(f"   MSE: {mse:.6f}")
+    print(f"   MAE: {mae:.6f}")
+    
+    # 극값 예측 정확도 (실제 데이터 특성 반영)
+    extreme_mask = (np.abs(y_val - 0.0) < 0.01) | (np.abs(y_val - 1.0) < 0.01)
+    extreme_accuracy = np.mean(np.abs(y_val[extreme_mask] - y_pred[extreme_mask]) < 0.1)
+    print(f"   극값 예측 정확도: {extreme_accuracy:.3f}")
+    
+    # 색상 다양성 평가
+    test_color_diversity(model, X_val, y_val)
+    
+    return {
+        'mse': mse,
+        'mae': mae,
+        'extreme_accuracy': extreme_accuracy
+    }
 
 def test_color_diversity(model, X_val, y_val):
-    """색상 다양성 테스트"""
+    """실제 데이터 특성을 반영한 색상 다양성 테스트"""
     print("\n🎨 색상 다양성 테스트:")
     
     # 예측 수행
@@ -320,15 +410,28 @@ def save_diverse_model_as_tfjs(model, scaler):
     with open(os.path.join(model_dir, 'model.json'), 'w') as f:
         json.dump(model_json, f, indent=2)
     
-    # 5. 스케일러 정보 저장
-    scaler_info = {
-        'mean': scaler.mean_.tolist(),
-        'scale': scaler.scale_.tolist(),
-        'n_features_in_': scaler.n_features_in_
-    }
-    
-    with open(os.path.join(model_dir, 'scaler_info.json'), 'w') as f:
-        json.dump(scaler_info, f, indent=2)
+    # 5. 스케일러 정보 저장 (정규화가 적용된 경우에만)
+    if scaler is not None:
+        scaler_info = {
+            'mean': scaler.mean_.tolist(),
+            'scale': scaler.scale_.tolist(),
+            'n_features_in_': scaler.n_features_in_
+        }
+        
+        with open(os.path.join(model_dir, 'scaler_info.json'), 'w') as f:
+            json.dump(scaler_info, f, indent=2)
+    else:
+        # 정규화가 이미 적용된 경우
+        scaler_info = {
+            'preprocessing': 'already_normalized',
+            'face_descriptor_range': [-0.35, 0.35],
+            'physical_features_range': [0.0, 1.0],
+            'random_seed_range': [0.0, 1.0],
+            'description': '데이터가 이미 실제 특성에 맞게 정규화됨'
+        }
+        
+        with open(os.path.join(model_dir, 'scaler_info.json'), 'w') as f:
+            json.dump(scaler_info, f, indent=2)
     
     # 6. 모델 정보 저장
     model_info = {
@@ -355,7 +458,10 @@ def save_diverse_model_as_tfjs(model, scaler):
         json.dump(model_info, f, ensure_ascii=False, indent=2)
     
     print(f"✅ 다양한 얼굴-색상 모델이 TensorFlow.js 형식으로 {model_dir}에 저장되었습니다.")
-    print(f"   📁 생성된 파일: model.json, {len(weight_files)}개 가중치 파일, scaler_info.json, model_info.json")
+    if scaler is not None:
+        print(f"   📁 생성된 파일: model.json, {len(weight_files)}개 가중치 파일, scaler_info.json, model_info.json")
+    else:
+        print(f"   📁 생성된 파일: model.json, {len(weight_files)}개 가중치 파일, scaler_info.json (정규화 정보), model_info.json")
 
 def main():
     """메인 실행 함수"""
@@ -370,18 +476,21 @@ def main():
         # 색상 다양성 분석
         analyze_color_diversity(y, metadata)
         
-        # 모델 학습
-        model, scaler = train_diverse_face_to_color_model(X, y, metadata)
+        # 모델 학습 (실제 데이터 특성 반영)
+        model, history, X_val, y_val = train_diverse_face_to_color_model(X, y, metadata)
+        
+        # 모델 성능 평가
+        performance = evaluate_model_performance(model, X_val, y_val, metadata)
         
         # TensorFlow.js 형식으로 저장
-        save_diverse_model_as_tfjs(model, scaler)
+        save_diverse_model_as_tfjs(model, None)  # 정규화는 이미 적용됨
         
-        print("\n🎉 다양한 얼굴-색상 모델 학습 및 저장 완료!")
+        print("\n🎉 실제 데이터 특성을 반영한 모델 학습 및 저장 완료!")
         print("🌐 이제 브라우저에서 바로 사용할 수 있습니다!")
+        print(f"📊 최종 성능: MSE={performance['mse']:.6f}, 극값 정확도={performance['extreme_accuracy']:.3f}")
         print("📁 생성된 파일들:")
         print("   - model.json: TensorFlow.js 호환 모델 구조")
         print("   - weights_*.bin: 모델 가중치 파일들")
-        print("   - scaler_info.json: 입력 정규화 정보")
         print("   - model_info.json: 모델 정보")
         
     except FileNotFoundError:

@@ -176,6 +176,28 @@ export class FaceColorPredictor {
         // 대안 검출 결과 사용
         const detection = alternativeDetections[0];
 
+        // 상세 로그 출력
+        console.log('🔍 얼굴 분석 상세 정보 (대안 설정):');
+        console.log('📊 얼굴 descriptor:', {
+          length: detection.descriptor.length,
+          first10: Array.from(detection.descriptor).slice(0, 10),
+          min: Math.min(...detection.descriptor),
+          max: Math.max(...detection.descriptor),
+          mean: detection.descriptor.reduce((a, b) => a + b, 0) / detection.descriptor.length
+        });
+        
+        console.log('🎭 감정 분석 결과:', detection.expressions);
+        
+        if (detection.landmarks) {
+          console.log('📍 랜드마크 정보:', {
+            count: detection.landmarks.positions.length,
+            first5: detection.landmarks.positions.slice(0, 5),
+            last5: detection.landmarks.positions.slice(-5)
+          });
+        }
+        
+        console.log('📦 바운딩 박스:', detection.detection);
+
         // 감정 분석 결과
         const { expressions } = detection;
         let maxEmotion = 'neutral';
@@ -189,6 +211,8 @@ export class FaceColorPredictor {
         }
       });
 
+        console.log(`🎯 최종 감정: ${maxEmotion} (신뢰도: ${maxConfidence.toFixed(3)})`);
+
         return {
           emotion: maxEmotion,
           confidence: maxConfidence,
@@ -200,6 +224,28 @@ export class FaceColorPredictor {
 
       // 첫 번째 얼굴 사용
       const detection = detections[0];
+
+      // 상세 로그 출력
+      console.log('🔍 얼굴 분석 상세 정보:');
+      console.log('📊 얼굴 descriptor:', {
+        length: detection.descriptor.length,
+        first10: Array.from(detection.descriptor).slice(0, 10),
+        min: Math.min(...detection.descriptor),
+        max: Math.max(...detection.descriptor),
+        mean: detection.descriptor.reduce((a, b) => a + b, 0) / detection.descriptor.length
+      });
+      
+      console.log('🎭 감정 분석 결과:', detection.expressions);
+      
+      if (detection.landmarks) {
+        console.log('📍 랜드마크 정보:', {
+          count: detection.landmarks.positions.length,
+          first5: detection.landmarks.positions.slice(0, 5),
+          last5: detection.landmarks.positions.slice(-5)
+        });
+      }
+      
+      console.log('📦 바운딩 박스:', detection.detection);
 
       // 감정 분석 결과
       const { expressions } = detection;
@@ -213,6 +259,8 @@ export class FaceColorPredictor {
           maxConfidence = confidenceValue;
         }
       });
+
+      console.log(`🎯 최종 감정: ${maxEmotion} (신뢰도: ${maxConfidence.toFixed(3)})`);
 
       return {
         emotion: maxEmotion,
@@ -517,22 +565,55 @@ export class FaceColorPredictor {
         // 1. 128차원 얼굴 descriptor
         const descriptorArray = Array.from(faceDescriptor);
 
-        // 2. 15차원 물리적 특징 추출
-        const physicalFeatures = FaceFeatureExtractor.extractFeatures(landmarks);
+      // 2. 15차원 물리적 특징 추출
+      const physicalFeatures = FaceFeatureExtractor.extractFeatures(landmarks);
 
-        // 3. 5차원 랜덤 시드 생성 (얼굴 특징 기반으로 일관된 시드 생성)
-        randomSeedArray = randomSeed || this.generateConsistentSeed(faceDescriptor, physicalFeatures);
+      // 3. 5차원 랜덤 시드 생성 (얼굴 특징 기반으로 일관된 시드 생성)
+      randomSeedArray = randomSeed || this.generateConsistentSeed(faceDescriptor, physicalFeatures);
 
-        // 4. 148차원 입력 벡터 조합
-        inputVector = [...descriptorArray, ...physicalFeatures, ...randomSeedArray];
-        
-        // 디버깅 정보 출력
-        console.log('🔍 향상된 모델 사용 중 (148차원)');
-        console.log('물리적 특징:', physicalFeatures.slice(0, 5));
-        console.log('랜덤 시드:', randomSeedArray);
+      // 4. 148차원 입력 벡터 조합
+      inputVector = [...descriptorArray, ...physicalFeatures, ...randomSeedArray];
+      
+      // 상세 디버깅 정보 출력
+      console.log('🔍 향상된 모델 사용 중 (148차원)');
+      console.log('📊 얼굴 descriptor (128차원):', {
+        length: descriptorArray.length,
+        first10: descriptorArray.slice(0, 10),
+        min: Math.min(...descriptorArray),
+        max: Math.max(...descriptorArray),
+        mean: descriptorArray.reduce((a, b) => a + b, 0) / descriptorArray.length
+      });
+      console.log('👤 물리적 특징 (15차원):', {
+        length: physicalFeatures.length,
+        values: physicalFeatures,
+        min: Math.min(...physicalFeatures),
+        max: Math.max(...physicalFeatures),
+        mean: physicalFeatures.reduce((a, b) => a + b, 0) / physicalFeatures.length
+      });
+      console.log('🎲 랜덤 시드 (5차원):', {
+        length: randomSeedArray.length,
+        values: randomSeedArray,
+        min: Math.min(...randomSeedArray),
+        max: Math.max(...randomSeedArray)
+      });
+      console.log('📈 최종 입력 벡터 (148차원):', {
+        length: inputVector.length,
+        first10: inputVector.slice(0, 10),
+        last10: inputVector.slice(-10)
+      });
       } else {
         // 기존 모델: 128차원 입력 (descriptor만)
         inputVector = Array.from(faceDescriptor);
+        
+        // 상세 디버깅 정보 출력
+        console.log('🔍 기존 모델 사용 중 (128차원)');
+        console.log('📊 얼굴 descriptor (128차원):', {
+          length: inputVector.length,
+          first10: inputVector.slice(0, 10),
+          min: Math.min(...inputVector),
+          max: Math.max(...inputVector),
+          mean: inputVector.reduce((a, b) => a + b, 0) / inputVector.length
+        });
       }
 
       // 입력 텐서 생성
@@ -545,6 +626,17 @@ export class FaceColorPredictor {
       // 15차원 벡터를 5개 색상 팔레트로 변환
       let palette = vectorToPalette(Array.from(predictionArray));
       
+      // 상세 디버깅 정보 출력
+      console.log('🎨 색상 예측 결과:');
+      console.log('📊 예측 벡터 (15차원):', {
+        length: predictionArray.length,
+        values: Array.from(predictionArray),
+        min: Math.min(...predictionArray),
+        max: Math.max(...predictionArray),
+        mean: predictionArray.reduce((a, b) => a + b, 0) / predictionArray.length
+      });
+      console.log('🎨 원본 색상 팔레트:', palette.colors);
+      
       // 감정 기반 색상 조정 (모든 모델에 적용)
       if (emotion) {
         console.log(`😊 감정 기반 색상 조정: ${emotion}`);
@@ -554,7 +646,7 @@ export class FaceColorPredictor {
       
       // 색상 다양성 강화 (향상된 모델인 경우)
       if (inputDim === 148) {
-        console.log('🎨 원본 색상 팔레트:', palette.colors);
+        console.log('✨ 색상 다양성 강화 적용');
         palette = this.enhanceColorDiversity(palette, randomSeedArray, emotion);
         console.log('✨ 다양성 강화된 색상 팔레트:', palette.colors);
       }
