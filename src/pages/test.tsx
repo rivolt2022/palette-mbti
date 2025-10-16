@@ -26,7 +26,11 @@ import {
 const FaceColorTest = () => {
   const [faceColorResult, setFaceColorResult] =
     React.useState<ColorRecommendationResult | null>(null);
+  const [multiplePalettes, setMultiplePalettes] = React.useState<
+    ColorPalette[]
+  >([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoadingVariations, setIsLoadingVariations] = React.useState(false);
   const [faceColorPredictor, setFaceColorPredictor] =
     React.useState<FaceColorPredictor | null>(null);
   const [mbtiPrediction, setMbtiPrediction] = React.useState<any>(null);
@@ -34,6 +38,7 @@ const FaceColorTest = () => {
     React.useState<MBTIPredictor | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const [showMultiplePalettes, setShowMultiplePalettes] = React.useState(false);
 
   // 모델 초기화 (클라이언트 사이드에서만)
   React.useEffect(() => {
@@ -85,6 +90,7 @@ const FaceColorTest = () => {
         selectedFile
       );
       setFaceColorResult(result);
+      setShowMultiplePalettes(false); // 초기에는 단일 팔레트만 표시
 
       // MBTI 예측도 함께 실행
       if (mbtiPredictor) {
@@ -111,6 +117,40 @@ const FaceColorTest = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 여러 팔레트 생성
+  const generateMultiplePalettes = async () => {
+    if (!selectedFile || !faceColorPredictor) return;
+
+    setIsLoadingVariations(true);
+    try {
+      const result = await faceColorPredictor.recommendMultipleColorsFromImage(
+        await createImageElement(selectedFile),
+        5 // 5개의 다양한 팔레트 생성
+      );
+      setMultiplePalettes(result.palettes);
+      setShowMultiplePalettes(true);
+    } catch (error) {
+      console.error('다중 팔레트 생성 실패:', error);
+      alert('다중 팔레트 생성에 실패했습니다.');
+    } finally {
+      setIsLoadingVariations(false);
+    }
+  };
+
+  // File을 ImageElement로 변환하는 헬퍼 함수
+  const createImageElement = (file: File): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   return (
@@ -145,13 +185,25 @@ const FaceColorTest = () => {
           </div>
         )}
 
-        <button
-          onClick={analyzeFace}
-          disabled={!selectedFile || isLoading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {isLoading ? '분석 중...' : '얼굴 분석 및 색상 추천'}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={analyzeFace}
+            disabled={!selectedFile || isLoading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? '분석 중...' : '얼굴 분석 및 색상 추천'}
+          </button>
+
+          {faceColorResult && (
+            <button
+              onClick={generateMultiplePalettes}
+              disabled={!selectedFile || isLoadingVariations}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isLoadingVariations ? '생성 중...' : '🎨 다른 팔레트 보기'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 결과 표시 섹션 */}
@@ -179,26 +231,33 @@ const FaceColorTest = () => {
 
             {/* 디버깅 정보 */}
             <div className="mb-4 p-2 bg-yellow-50 rounded text-xs">
-              <strong>디버깅:</strong> 팔레트 색상 개수: {faceColorResult.palette.colors.length}개
+              <strong>디버깅:</strong> 팔레트 색상 개수:{' '}
+              {faceColorResult.palette.colors.length}개
               <br />
               색상들: {JSON.stringify(faceColorResult.palette.colors)}
+              <br />
+              <strong>모델 정보:</strong> 브라우저 콘솔에서 상세 정보를
+              확인하세요
             </div>
 
             <div className="flex gap-4 mb-4">
-              {faceColorResult.palette.colors && faceColorResult.palette.colors.length > 0 ? (
+              {faceColorResult.palette.colors &&
+              faceColorResult.palette.colors.length > 0 ? (
                 faceColorResult.palette.colors.map((color, index) => (
                   <div
                     key={index}
                     className="w-20 h-20 rounded-xl border-4 border-white shadow-2xl flex flex-col items-center justify-center text-xs font-bold relative"
-                    style={{ 
+                    style={{
                       backgroundColor: color,
                       minWidth: '80px',
                       minHeight: '80px',
-                      boxShadow: `0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)`
+                      boxShadow: `0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)`,
                     }}
                     title={`색상 ${index + 1}: ${color}`}
                   >
-                    <span className="text-white drop-shadow-lg font-bold text-sm">{index + 1}</span>
+                    <span className="text-white drop-shadow-lg font-bold text-sm">
+                      {index + 1}
+                    </span>
                     <div className="text-white drop-shadow-lg text-xs mt-1 font-mono">
                       {color.substring(1, 7)}
                     </div>
@@ -218,39 +277,57 @@ const FaceColorTest = () => {
               </p>
             </div>
 
-            {/* 대안 팔레트들 */}
-            {faceColorResult.alternativePalettes &&
-              faceColorResult.alternativePalettes.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="text-md font-semibold text-blue-700 mb-3">
-                    🔄 대안 색상 팔레트
-                  </h4>
-                  <div className="space-y-4">
-                    {faceColorResult.alternativePalettes.map(
-                      (altPalette, paletteIndex) => (
-                        <div
-                          key={paletteIndex}
-                          className="bg-blue-50 p-3 rounded-lg"
-                        >
-                          <div className="flex gap-2 mb-2">
-                            {altPalette.colors.map((color, colorIndex) => (
-                              <div
-                                key={colorIndex}
-                                className="w-12 h-12 rounded border border-gray-300 shadow-sm"
-                                style={{ backgroundColor: color }}
-                                title={color}
-                              />
-                            ))}
+            {/* 여러 팔레트 표시 */}
+            {showMultiplePalettes && multiplePalettes.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-md font-semibold text-purple-700 mb-3">
+                  🎨 다양한 색상 팔레트 (랜덤 시드 기반)
+                </h4>
+                <p className="text-sm text-purple-600 mb-4">
+                  같은 얼굴에서도 매번 다른 색상 조합을 생성합니다!
+                </p>
+                <div className="space-y-4">
+                  {multiplePalettes.map((palette, paletteIndex) => (
+                    <div
+                      key={paletteIndex}
+                      className="bg-purple-50 p-4 rounded-lg border border-purple-200"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="font-semibold text-purple-800">
+                          팔레트 {paletteIndex + 1}
+                        </span>
+                        <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                          랜덤 시드: {paletteIndex + 1}
+                        </span>
+                      </div>
+                      <div className="flex gap-3 mb-2">
+                        {palette.colors.map((color, colorIndex) => (
+                          <div
+                            key={colorIndex}
+                            className="w-16 h-16 rounded-lg border-2 border-white shadow-lg flex flex-col items-center justify-center text-xs font-bold"
+                            style={{
+                              backgroundColor: color,
+                              boxShadow: `0 2px 4px rgba(0,0,0,0.2)`,
+                            }}
+                            title={`${color}`}
+                          >
+                            <span className="text-white drop-shadow-lg font-bold text-sm">
+                              {colorIndex + 1}
+                            </span>
+                            <div className="text-white drop-shadow-lg text-xs mt-1 font-mono">
+                              {color.substring(1, 7)}
+                            </div>
                           </div>
-                          <div className="text-xs text-blue-600">
-                            {altPalette.colors.join(', ')}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
+                        ))}
+                      </div>
+                      <div className="text-xs text-purple-600 font-mono">
+                        {palette.colors.join(', ')}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
           </div>
 
           {/* MBTI 예측 결과 */}

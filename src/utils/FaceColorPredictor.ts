@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /**
  * 얼굴 이미지에서 색상 팔레트를 추천하는 예측기
  * FaceAPI.js와 커스텀 색상 추천 모델을 사용합니다.
@@ -6,11 +7,13 @@
 import * as tf from '@tensorflow/tfjs';
 
 import { ColorPalette, vectorToPalette } from './ColorMLUtils';
+import { FaceFeatureExtractor, FaceLandmarks } from './FaceFeatureExtractor';
 
 export interface FaceAnalysisResult {
   emotion: string;
   confidence: number;
   faceDescriptor: Float32Array | null;
+  landmarks: FaceLandmarks | null;
   boundingBox: faceapi.FaceDetection | null;
 }
 
@@ -74,10 +77,18 @@ export class FaceColorPredictor {
     if (this.isModelsLoaded) return;
 
     try {
-      const modelUrl = '/models/face-to-color/model.json';
-      this.faceColorModel = await tf.loadLayersModel(modelUrl);
+      // 향상된 모델 우선 시도, 실패하면 기존 모델 사용
+      try {
+        const enhancedModelUrl = '/models/enhanced-face-to-color/model.json';
+        this.faceColorModel = await tf.loadLayersModel(enhancedModelUrl);
+        console.log('✅ 향상된 얼굴-색상 모델 로드 완료 (148차원 입력)');
+      } catch (enhancedError) {
+        console.log('⚠️ 향상된 모델 로드 실패, 기존 모델 사용');
+        const modelUrl = '/models/face-to-color/model.json';
+        this.faceColorModel = await tf.loadLayersModel(modelUrl);
+        console.log('✅ 기존 얼굴-색상 모델 로드 완료 (128차원 입력)');
+      }
       this.isModelsLoaded = true;
-      console.log('✅ 얼굴-색상 모델 로드 완료');
     } catch (error) {
       console.error('❌ 얼굴-색상 모델 로드 실패:', error);
       throw new Error('색상 추천 모델을 로드할 수 없습니다.');
@@ -164,6 +175,7 @@ export class FaceColorPredictor {
           emotion: maxEmotion,
           confidence: maxConfidence,
           faceDescriptor: detection.descriptor,
+          landmarks: detection.landmarks ? { positions: detection.landmarks.positions } : null,
           boundingBox: detection.detection,
         };
       }
@@ -187,6 +199,7 @@ export class FaceColorPredictor {
         emotion: maxEmotion,
         confidence: maxConfidence,
         faceDescriptor: detection.descriptor,
+        landmarks: detection.landmarks ? { positions: detection.landmarks.positions } : null,
         boundingBox: detection.detection,
       };
     } catch (error) {
@@ -196,10 +209,68 @@ export class FaceColorPredictor {
   }
 
   /**
+   * 색상 다양성을 강화하는 함수
+   */
+  private enhanceColorDiversity(palette: ColorPalette, randomSeed: number[]): ColorPalette {
+    const enhancedColors = palette.colors.map((color, index) => {
+      // 랜덤 시드를 사용한 색상 변형
+      const seed = randomSeed[index % randomSeed.length];
+      
+      // RGB 값 추출
+      const hex = color.replace('#', '');
+      let r = parseInt(hex.substring(0, 2), 16) / 255;
+      let g = parseInt(hex.substring(2, 4), 16) / 255;
+      let b = parseInt(hex.substring(4, 6), 16) / 255;
+      
+      // 강한 색상 변형 적용
+      const variation = (seed - 0.5) * 0.8; // -0.4 ~ +0.4 범위
+      
+      // 색상 채널별 변형
+      r = Math.max(0, Math.min(1, r + variation * 0.5));
+      g = Math.max(0, Math.min(1, g + variation * 0.3));
+      b = Math.max(0, Math.min(1, b + variation * 0.7));
+      
+      // 채도 강화
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max === 0 ? 0 : (max - min) / max;
+      
+      if (saturation < 0.3) {
+        // 채도가 낮으면 강화
+        const enhanceFactor = 1.5 + seed * 0.5;
+        r += (max - r) * enhanceFactor * 0.3;
+        g += (max - g) * enhanceFactor * 0.3;
+        b += (max - b) * enhanceFactor * 0.3;
+      }
+      
+      // 밝기 조정
+      const brightness = (r + g + b) / 3;
+      if (brightness < 0.3) {
+        const brightenFactor = 0.5 + seed * 0.3;
+        r = Math.min(1, r + brightenFactor);
+        g = Math.min(1, g + brightenFactor);
+        b = Math.min(1, b + brightenFactor);
+      }
+      
+      // 최종 RGB 값을 16진수로 변환
+      const toHex = (n: number) => {
+        const hex = Math.round(n * 255).toString(16);
+        return hex.length === 1 ? `0${hex}` : hex;
+      };
+      
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    });
+    
+    return { colors: enhancedColors };
+  }
+
+  /**
    * 얼굴 특징 벡터에서 색상 팔레트를 예측합니다.
    */
   async predictColorFromFace(
-    faceDescriptor: Float32Array
+    faceDescriptor: Float32Array,
+    landmarks?: FaceLandmarks | null,
+    randomSeed?: number[]
   ): Promise<ColorPalette> {
     if (!this.isModelsLoaded) {
       await this.loadFaceColorModel();
@@ -210,15 +281,54 @@ export class FaceColorPredictor {
     }
 
     try {
-      // 128차원 얼굴 특징 벡터를 텐서로 변환
-      const inputTensor = tf.tensor2d([Array.from(faceDescriptor)]);
+      let inputVector: number[];
+      let randomSeedArray: number[] = []; // 랜덤 시드 배열 선언
+
+      // 모델 입력 차원 확인 (148차원이면 향상된 모델, 128차원이면 기존 모델)
+      const inputShape = this.faceColorModel.inputs[0].shape;
+      const inputDim = inputShape ? inputShape[1] : 128;
+
+      if (inputDim === 148) {
+        // 향상된 모델: 148차원 입력 (descriptor 128 + 특징 15 + 랜덤 5)
+        if (!landmarks) {
+          throw new Error('향상된 모델을 사용하려면 랜드마크 정보가 필요합니다.');
+        }
+
+        // 1. 128차원 얼굴 descriptor
+        const descriptorArray = Array.from(faceDescriptor);
+
+        // 2. 15차원 물리적 특징 추출
+        const physicalFeatures = FaceFeatureExtractor.extractFeatures(landmarks);
+
+        // 3. 5차원 랜덤 시드 생성 (더 강한 변형을 위해)
+        randomSeedArray = randomSeed || FaceFeatureExtractor.generateRandomSeed();
+
+        // 4. 148차원 입력 벡터 조합
+        inputVector = [...descriptorArray, ...physicalFeatures, ...randomSeedArray];
+        
+        // 디버깅 정보 출력
+        console.log('🔍 향상된 모델 사용 중 (148차원)');
+        console.log('물리적 특징:', physicalFeatures.slice(0, 5));
+        console.log('랜덤 시드:', randomSeedArray);
+      } else {
+        // 기존 모델: 128차원 입력 (descriptor만)
+        inputVector = Array.from(faceDescriptor);
+      }
+
+      // 입력 텐서 생성
+      const inputTensor = tf.tensor2d([inputVector]);
 
       // 색상 예측 수행
       const prediction = this.faceColorModel.predict(inputTensor) as tf.Tensor;
       const predictionArray = await prediction.data();
 
       // 15차원 벡터를 5개 색상 팔레트로 변환
-      const palette = vectorToPalette(Array.from(predictionArray));
+      let palette = vectorToPalette(Array.from(predictionArray));
+      
+      // 색상 다양성 강화 (향상된 모델인 경우)
+      if (inputDim === 148) {
+        palette = this.enhanceColorDiversity(palette, randomSeedArray);
+      }
 
       // 메모리 정리
       inputTensor.dispose();
@@ -247,7 +357,8 @@ export class FaceColorPredictor {
 
       // 2. 색상 팔레트 예측
       const palette = await this.predictColorFromFace(
-        faceAnalysis.faceDescriptor
+        faceAnalysis.faceDescriptor,
+        faceAnalysis.landmarks
       );
 
       return {
@@ -332,6 +443,85 @@ export class FaceColorPredictor {
   }
 
   /**
+   * 한 얼굴에서 여러 색상 팔레트를 생성합니다.
+   */
+  async predictMultipleVariations(
+    faceDescriptor: Float32Array,
+    landmarks: FaceLandmarks | null,
+    count: number = 5
+  ): Promise<ColorPalette[]> {
+    if (!this.isModelsLoaded) {
+      await this.loadFaceColorModel();
+    }
+
+    if (!this.faceColorModel) {
+      throw new Error('색상 추천 모델이 로드되지 않았습니다.');
+    }
+
+    const palettes: ColorPalette[] = [];
+
+    for (let i = 0; i < count; i++) {
+      try {
+        // 각 팔레트마다 다른 랜덤 시드 사용
+        const randomSeed = FaceFeatureExtractor.generateRandomSeed();
+        const palette = await this.predictColorFromFace(
+          faceDescriptor,
+          landmarks,
+          randomSeed
+        );
+        palettes.push(palette);
+      } catch (error) {
+        console.error(`팔레트 ${i + 1} 생성 실패:`, error);
+        // 실패한 경우 기본 팔레트 사용
+        palettes.push({
+          colors: ['#808080', '#A0A0A0', '#C0C0C0', '#E0E0E0', '#F0F0F0']
+        });
+      }
+    }
+
+    return palettes;
+  }
+
+  /**
+   * 이미지에서 여러 색상 팔레트를 생성합니다.
+   */
+  async recommendMultipleColorsFromImage(
+    imageElement: HTMLImageElement | HTMLCanvasElement,
+    count: number = 5
+  ): Promise<{
+    palettes: ColorPalette[];
+    emotion: string;
+    confidence: number;
+    analysis: FaceAnalysisResult;
+  }> {
+    try {
+      // 1. 얼굴 분석
+      const faceAnalysis = await this.analyzeFace(imageElement);
+
+      if (!faceAnalysis.faceDescriptor) {
+        throw new Error('얼굴 특징을 추출할 수 없습니다.');
+      }
+
+      // 2. 여러 색상 팔레트 예측
+      const palettes = await this.predictMultipleVariations(
+        faceAnalysis.faceDescriptor,
+        faceAnalysis.landmarks,
+        count
+      );
+
+      return {
+        palettes,
+        emotion: faceAnalysis.emotion,
+        confidence: faceAnalysis.confidence,
+        analysis: faceAnalysis,
+      };
+    } catch (error) {
+      console.error('다중 색상 추천 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 모델 상태를 확인합니다.
    */
   getModelStatus(): {
@@ -345,6 +535,7 @@ export class FaceColorPredictor {
       isAllLoaded: this.isFaceApiLoaded && this.isModelsLoaded,
     };
   }
+
 
   /**
    * 모델을 언로드하여 메모리를 정리합니다.

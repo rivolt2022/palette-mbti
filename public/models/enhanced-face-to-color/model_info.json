@@ -1,0 +1,37 @@
+{
+  "input_dim": 148,
+  "output_dim": 15,
+  "description": "향상된 얼굴-색상 모델: descriptor(128) + 물리적 특징(15) + 랜덤 시드(5) → RGB(15)",
+  "input_breakdown": {
+    "face_descriptor": 128,
+    "physical_features": 15,
+    "random_seed": 5,
+    "total": 148
+  },
+  "physical_features": [
+    "face_aspect_ratio",
+    "jaw_angle",
+    "forehead_width",
+    "symmetry",
+    "eye_size",
+    "eye_distance",
+    "eye_height",
+    "eye_angle",
+    "mouth_width",
+    "mouth_height",
+    "lip_thickness",
+    "nose_length",
+    "nose_width",
+    "upper_face_ratio",
+    "lower_face_ratio"
+  ],
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "neutral"
+  ]
+}
