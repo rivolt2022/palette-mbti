@@ -177,15 +177,38 @@ const FaceColorTest = () => {
               🎨 추천 색상 팔레트
             </h3>
 
-            <div className="flex gap-3 mb-4">
-              {faceColorResult.palette.colors.map((color, index) => (
-                <div
-                  key={index}
-                  className="w-16 h-16 rounded-lg border-2 border-white shadow-lg"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
+            {/* 디버깅 정보 */}
+            <div className="mb-4 p-2 bg-yellow-50 rounded text-xs">
+              <strong>디버깅:</strong> 팔레트 색상 개수: {faceColorResult.palette.colors.length}개
+              <br />
+              색상들: {JSON.stringify(faceColorResult.palette.colors)}
+            </div>
+
+            <div className="flex gap-4 mb-4">
+              {faceColorResult.palette.colors && faceColorResult.palette.colors.length > 0 ? (
+                faceColorResult.palette.colors.map((color, index) => (
+                  <div
+                    key={index}
+                    className="w-20 h-20 rounded-xl border-4 border-white shadow-2xl flex flex-col items-center justify-center text-xs font-bold relative"
+                    style={{ 
+                      backgroundColor: color,
+                      minWidth: '80px',
+                      minHeight: '80px',
+                      boxShadow: `0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)`
+                    }}
+                    title={`색상 ${index + 1}: ${color}`}
+                  >
+                    <span className="text-white drop-shadow-lg font-bold text-sm">{index + 1}</span>
+                    <div className="text-white drop-shadow-lg text-xs mt-1 font-mono">
+                      {color.substring(1, 7)}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-red-600 font-semibold">
+                  ❌ 색상 팔레트 데이터가 없습니다!
+                </div>
+              )}
             </div>
 
             <div className="text-sm text-blue-700">
@@ -194,6 +217,40 @@ const FaceColorTest = () => {
                 {faceColorResult.palette.colors.join(', ')}
               </p>
             </div>
+
+            {/* 대안 팔레트들 */}
+            {faceColorResult.alternativePalettes &&
+              faceColorResult.alternativePalettes.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-md font-semibold text-blue-700 mb-3">
+                    🔄 대안 색상 팔레트
+                  </h4>
+                  <div className="space-y-4">
+                    {faceColorResult.alternativePalettes.map(
+                      (altPalette, paletteIndex) => (
+                        <div
+                          key={paletteIndex}
+                          className="bg-blue-50 p-3 rounded-lg"
+                        >
+                          <div className="flex gap-2 mb-2">
+                            {altPalette.colors.map((color, colorIndex) => (
+                              <div
+                                key={colorIndex}
+                                className="w-12 h-12 rounded border border-gray-300 shadow-sm"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            {altPalette.colors.join(', ')}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
           </div>
 
           {/* MBTI 예측 결과 */}
@@ -460,7 +517,10 @@ const Test = () => (
       />
     }
   >
-    <FaceColorTest />
+    <div className="space-y-12">
+      <FaceColorTest />
+      <ColorMLTest />
+    </div>
   </Main>
 );
 

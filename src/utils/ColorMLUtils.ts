@@ -61,13 +61,27 @@ export function rgbToHex(r: number, g: number, b: number): string {
 export function vectorToPalette(vector: number[]): ColorPalette {
   const colors: string[] = [];
 
-  for (let i = 0; i < vector.length; i += 3) {
-    const r = vector[i];
-    const g = vector[i + 1];
-    const b = vector[i + 2];
-    colors.push(rgbToHex(r, g, b));
+  console.log('vectorToPalette 입력 벡터:', vector);
+  console.log('벡터 길이:', vector.length);
+
+  // 벡터 길이를 15로 제한 (5개 색상 × 3 RGB 값)
+  const maxLength = Math.min(vector.length, 15);
+  
+  for (let i = 0; i < maxLength; i += 3) {
+    if (i + 2 < maxLength) {
+      const r = Math.max(0, Math.min(1, vector[i] || 0));
+      const g = Math.max(0, Math.min(1, vector[i + 1] || 0));
+      const b = Math.max(0, Math.min(1, vector[i + 2] || 0));
+      colors.push(rgbToHex(r, g, b));
+    }
   }
 
+  // 5개 색상이 되도록 기본 색상으로 채우기
+  while (colors.length < 5) {
+    colors.push('#808080'); // 기본 회색
+  }
+
+  console.log('변환된 색상 팔레트:', colors);
   return { colors };
 }
 
