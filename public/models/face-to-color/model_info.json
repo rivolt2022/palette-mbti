@@ -1,0 +1,14 @@
+{
+  "input_dim": 128,
+  "output_dim": 15,
+  "description": "얼굴 특징 벡터(128차원)에서 색상 팔레트(15차원)로 변환하는 모델",
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "neutral"
+  ]
+}

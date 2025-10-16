@@ -16,7 +16,248 @@ import {
   paletteToVector,
 } from '../utils/ColorMLUtils';
 import { getAllPosts } from '../utils/Content';
+import {
+  FaceColorPredictor,
+  ColorRecommendationResult,
+} from '../utils/FaceColorPredictor';
 // import { MBTIPredictor } from '../utils/MBTIPredictor';
+
+// 얼굴 기반 색상 추천 컴포넌트
+const FaceColorTest = () => {
+  const [faceColorResult, setFaceColorResult] =
+    React.useState<ColorRecommendationResult | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [faceColorPredictor, setFaceColorPredictor] =
+    React.useState<FaceColorPredictor | null>(null);
+  const [mbtiPrediction, setMbtiPrediction] = React.useState<any>(null);
+  const [mbtiPredictor, setMbtiPredictor] =
+    React.useState<MBTIPredictor | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+
+  // 모델 초기화 (클라이언트 사이드에서만)
+  React.useEffect(() => {
+    const initPredictors = async () => {
+      // 클라이언트 사이드에서만 실행
+      if (typeof window === 'undefined') return;
+
+      try {
+        const facePredictor = new FaceColorPredictor();
+        const mbtiPred = new MBTIPredictor();
+
+        await Promise.all([
+          facePredictor.loadAllModels(),
+          mbtiPred.loadModels(),
+        ]);
+
+        setFaceColorPredictor(facePredictor);
+        setMbtiPredictor(mbtiPred);
+        console.log('✅ 모든 모델 로드 완료');
+      } catch (error) {
+        console.error('❌ 모델 로드 실패:', error);
+      }
+    };
+    initPredictors();
+  }, []);
+
+  // 파일 선택 핸들러
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+
+      // 이미지 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 얼굴 분석 및 색상 추천 실행
+  const analyzeFace = async () => {
+    if (!selectedFile || !faceColorPredictor) return;
+
+    setIsLoading(true);
+    try {
+      const result = await faceColorPredictor.recommendColorsFromFile(
+        selectedFile
+      );
+      setFaceColorResult(result);
+
+      // MBTI 예측도 함께 실행
+      if (mbtiPredictor) {
+        try {
+          console.log('MBTI 예측 시작...', result.palette);
+          const mbtiResult = await mbtiPredictor.predictMBTI(result.palette);
+          console.log('MBTI 예측 결과:', mbtiResult);
+          setMbtiPrediction(mbtiResult);
+        } catch (mbtiError) {
+          console.error('MBTI 예측 실패:', mbtiError);
+        }
+      } else {
+        console.log('MBTI 예측기 없음');
+      }
+    } catch (error) {
+      console.error('얼굴 분석 실패:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.';
+      alert(
+        `얼굴 분석에 실패했습니다: ${errorMessage}\n\n다른 이미지를 시도해보세요.`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6">🎭 얼굴 기반 색상 추천</h2>
+
+      {/* 파일 업로드 섹션 */}
+      <div className="mb-8 p-6 border rounded-lg bg-gray-50">
+        <h3 className="text-lg font-semibold mb-4">1. 얼굴 사진 업로드</h3>
+
+        <div className="mb-4">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          <p className="text-xs text-gray-500 mt-2">
+            💡 팁: 얼굴이 명확하게 보이는 사진을 업로드해주세요. (정면, 조명이
+            좋은 사진)
+          </p>
+        </div>
+
+        {imagePreview && (
+          <div className="mb-4">
+            <h4 className="text-md font-medium mb-2">이미지 미리보기:</h4>
+            <img
+              src={imagePreview}
+              alt="업로드된 이미지"
+              className="max-w-xs max-h-64 object-contain border rounded"
+            />
+          </div>
+        )}
+
+        <button
+          onClick={analyzeFace}
+          disabled={!selectedFile || isLoading}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {isLoading ? '분석 중...' : '얼굴 분석 및 색상 추천'}
+        </button>
+      </div>
+
+      {/* 결과 표시 섹션 */}
+      {faceColorResult && (
+        <div className="space-y-6">
+          {/* 감정 분석 결과 */}
+          <div className="p-4 bg-green-100 rounded-lg">
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              😊 감정 분석 결과
+            </h3>
+            <p className="text-green-700">
+              <strong>감정:</strong> {faceColorResult.emotion}
+              <span className="ml-2">
+                <strong>신뢰도:</strong>{' '}
+                {(faceColorResult.confidence * 100).toFixed(1)}%
+              </span>
+            </p>
+          </div>
+
+          {/* 추천 색상 팔레트 */}
+          <div className="p-4 bg-blue-100 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-4">
+              🎨 추천 색상 팔레트
+            </h3>
+
+            <div className="flex gap-3 mb-4">
+              {faceColorResult.palette.colors.map((color, index) => (
+                <div
+                  key={index}
+                  className="w-16 h-16 rounded-lg border-2 border-white shadow-lg"
+                  style={{ backgroundColor: color }}
+                  title={color}
+                />
+              ))}
+            </div>
+
+            <div className="text-sm text-blue-700">
+              <p>
+                <strong>색상 코드:</strong>{' '}
+                {faceColorResult.palette.colors.join(', ')}
+              </p>
+            </div>
+          </div>
+
+          {/* MBTI 예측 결과 */}
+          {mbtiPrediction && (
+            <div className="p-4 bg-purple-100 rounded-lg">
+              <h3 className="text-lg font-semibold text-purple-800 mb-2">
+                🧠 MBTI 예측 결과
+              </h3>
+              <p className="text-purple-700">
+                <strong>예측된 MBTI:</strong> {mbtiPrediction.mbti}
+                <span className="ml-2">
+                  <strong>신뢰도:</strong>{' '}
+                  {(mbtiPrediction.confidence * 100).toFixed(1)}%
+                </span>
+              </p>
+
+              <div className="mt-2 text-sm">
+                <h4 className="font-medium mb-1">세부 지표:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {mbtiPrediction.predictions.map(
+                    (pred: any, index: number) => (
+                      <div key={index} className="text-xs">
+                        <span className="font-medium">
+                          {pred.indicator.toUpperCase()}:
+                        </span>{' '}
+                        {pred.prediction}
+                        <span className="ml-1">
+                          ({(pred.confidence * 100).toFixed(0)}%)
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 모델 상태 표시 */}
+      <div className="mt-8 p-4 bg-gray-100 rounded-lg">
+        <h3 className="text-lg font-semibold mb-2">📊 모델 상태</h3>
+        <div className="text-sm text-gray-600">
+          {faceColorPredictor && (
+            <p>
+              얼굴-색상 모델:{' '}
+              {faceColorPredictor.getModelStatus().isAllLoaded
+                ? '✅ 로드됨'
+                : '❌ 로딩 중'}
+            </p>
+          )}
+          {mbtiPredictor && (
+            <p>
+              MBTI 모델:{' '}
+              {mbtiPredictor.getModelStatus().isLoaded
+                ? '✅ 로드됨'
+                : '❌ 로딩 중'}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ColorMLUtils 테스트용 컴포넌트
 const ColorMLTest = () => {
@@ -219,7 +460,7 @@ const Test = () => (
       />
     }
   >
-    <ColorMLTest />
+    <FaceColorTest />
   </Main>
 );
 

@@ -1,0 +1,107 @@
+{
+  "emotions": {
+    "happy": {
+      "name": "행복",
+      "description": "밝고 따뜻한 색상으로 활기찬 분위기",
+      "basePalettes": [
+        ["#FFD93D", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4"],
+        ["#FFEAA7", "#FDCB6E", "#E17055", "#00B894", "#74B9FF"],
+        ["#FDCB6E", "#E17055", "#6C5CE7", "#A29BFE", "#FD79A8"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.8,
+        "saturation": 0.7,
+        "temperature": 0.6
+      }
+    },
+    "sad": {
+      "name": "슬픔",
+      "description": "차분하고 어두운 색상으로 우울한 분위기",
+      "basePalettes": [
+        ["#6C7A89", "#95A5A6", "#BDC3C7", "#D5DBDB", "#F8F9F9"],
+        ["#2C3E50", "#34495E", "#7F8C8D", "#95A5A6", "#BDC3C7"],
+        ["#5D6D7E", "#85929E", "#AEB6BF", "#D5DBDB", "#F2F3F4"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.4,
+        "saturation": 0.3,
+        "temperature": -0.2
+      }
+    },
+    "angry": {
+      "name": "분노",
+      "description": "강렬하고 대비 높은 색상으로 격렬한 분위기",
+      "basePalettes": [
+        ["#E74C3C", "#C0392B", "#A93226", "#F39C12", "#D68910"],
+        ["#E74C3C", "#C0392B", "#A93226", "#E67E22", "#D35400"],
+        ["#E74C3C", "#8E44AD", "#9B59B6", "#F39C12", "#D68910"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.6,
+        "saturation": 0.9,
+        "temperature": 0.8
+      }
+    },
+    "fearful": {
+      "name": "두려움",
+      "description": "차가운 색상으로 불안한 분위기",
+      "basePalettes": [
+        ["#2C3E50", "#34495E", "#7F8C8D", "#95A5A6", "#BDC3C7"],
+        ["#1A252F", "#2C3E50", "#34495E", "#566573", "#7F8C8D"],
+        ["#2C3E50", "#34495E", "#5D6D7E", "#85929E", "#AEB6BF"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.3,
+        "saturation": 0.4,
+        "temperature": -0.5
+      }
+    },
+    "disgusted": {
+      "name": "혐오",
+      "description": "어둡고 탁한 색상으로 불쾌한 분위기",
+      "basePalettes": [
+        ["#8B4513", "#A0522D", "#CD853F", "#D2691E", "#BC8F8F"],
+        ["#654321", "#8B4513", "#A0522D", "#CD853F", "#D2691E"],
+        ["#5D4E37", "#8B7355", "#A0522D", "#CD853F", "#DEB887"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.4,
+        "saturation": 0.5,
+        "temperature": 0.2
+      }
+    },
+    "surprised": {
+      "name": "놀람",
+      "description": "밝고 선명한 색상으로 생동감 있는 분위기",
+      "basePalettes": [
+        ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"],
+        ["#E17055", "#00B894", "#74B9FF", "#A29BFE", "#FD79A8"],
+        ["#FDCB6E", "#6C5CE7", "#A29BFE", "#FD79A8", "#FDCB6E"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.8,
+        "saturation": 0.8,
+        "temperature": 0.3
+      }
+    },
+    "neutral": {
+      "name": "중립",
+      "description": "균형 잡힌 색상으로 차분한 분위기",
+      "basePalettes": [
+        ["#6C7A89", "#95A5A6", "#BDC3C7", "#D5DBDB", "#F8F9F9"],
+        ["#85929E", "#AEB6BF", "#D5DBDB", "#F2F3F4", "#F8F9F9"],
+        ["#5D6D7E", "#85929E", "#AEB6BF", "#D5DBDB", "#F2F3F4"]
+      ],
+      "colorCharacteristics": {
+        "brightness": 0.6,
+        "saturation": 0.3,
+        "temperature": 0.0
+      }
+    }
+  },
+  "colorTheory": {
+    "warmColors": ["#FF6B6B", "#FFD93D", "#FFEAA7", "#FDCB6E", "#E17055"],
+    "coolColors": ["#4ECDC4", "#45B7D1", "#74B9FF", "#A29BFE", "#6C5CE7"],
+    "neutralColors": ["#6C7A89", "#95A5A6", "#BDC3C7", "#D5DBDB", "#F8F9F9"]
+  }
+}
