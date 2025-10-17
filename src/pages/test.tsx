@@ -16,10 +16,7 @@ import {
   paletteToVector,
 } from '../utils/ColorMLUtils';
 import { getAllPosts } from '../utils/Content';
-import {
-  FaceColorPredictor,
-  ColorRecommendationResult,
-} from '../utils/FaceColorPredictor';
+import { FaceColorPredictor, ColorRecommendationResult } from '../utils/face';
 // import { MBTIPredictor } from '../utils/MBTIPredictor';
 
 // 얼굴 기반 색상 추천 컴포넌트
@@ -222,6 +219,85 @@ const FaceColorTest = () => {
               </span>
             </p>
           </div>
+
+          {/* 색상 추출 근거 섹션 */}
+          {faceColorResult.reason && (
+            <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200">
+              <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                🎨 이런 이유로 이 색상들이 선택되었어요!
+              </h3>
+
+              {/* 얼굴 특징 분석 */}
+              <div className="mb-4 p-4 bg-white rounded-lg">
+                <h4 className="font-semibold text-indigo-800 mb-2">
+                  👤 당신의 얼굴 특징
+                </h4>
+                <p className="text-gray-700 leading-relaxed">
+                  당신은{' '}
+                  <strong>
+                    {faceColorResult.reason.faceCharacteristics.faceShape}
+                  </strong>
+                  에{' '}
+                  <strong>
+                    {faceColorResult.reason.faceCharacteristics.eyeSize}
+                  </strong>
+                  을 가지고 계시네요!{' '}
+                  {faceColorResult.reason.faceCharacteristics.emotionalImpact}
+                </p>
+              </div>
+
+              {/* 색상 결정 요인 */}
+              <div className="mb-4 p-4 bg-white rounded-lg">
+                <h4 className="font-semibold text-purple-800 mb-2">
+                  🌈 색상 결정 과정
+                </h4>
+                <ul className="space-y-2">
+                  <li className="text-gray-700">
+                    <strong>💡 밝기:</strong>{' '}
+                    {
+                      faceColorResult.reason.colorDecisionFactors
+                        .brightnessReason
+                    }
+                  </li>
+                  <li className="text-gray-700">
+                    <strong>🎨 채도:</strong>{' '}
+                    {
+                      faceColorResult.reason.colorDecisionFactors
+                        .saturationReason
+                    }
+                  </li>
+                  <li className="text-gray-700">
+                    <strong>🌡️ 색온도:</strong>{' '}
+                    {
+                      faceColorResult.reason.colorDecisionFactors
+                        .temperatureReason
+                    }
+                  </li>
+                  {faceColorResult.reason.colorDecisionFactors
+                    .diversityApplied && (
+                    <li className="text-gray-700">
+                      <strong>✨ 다양성 강화:</strong> MBTI 예측을 위해 색상
+                      다양성을 극대화했어요!
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              {/* AI 처리 과정 */}
+              <div className="p-4 bg-white rounded-lg">
+                <h4 className="font-semibold text-pink-800 mb-2">
+                  🤖 AI 처리 과정
+                </h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
+                  {faceColorResult.reason.processingSteps.map((step, index) => (
+                    <li key={index} className="mb-1">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
 
           {/* 추천 색상 팔레트 */}
           <div className="p-4 bg-blue-100 rounded-lg">
